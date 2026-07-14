@@ -201,7 +201,7 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 </header>
 
 <nav>
-  <button class="on" data-tab="shows" onclick="tab('shows')"><span class="ic">🎭</span>公演</button>
+  <button class="on" data-tab="shows" onclick="tab('shows')"><span class="ic">🎫</span>公演</button>
   <button data-tab="people" onclick="tab('people')"><span class="ic">👥</span>顧客</button>
   <button data-tab="summary" onclick="tab('summary')"><span class="ic">📊</span>集計</button>
   <button data-tab="settings" onclick="tab('settings')"><span class="ic">⚙️</span>設定</button>
@@ -413,7 +413,7 @@ function firstDate(s){return (s.stages||[]).map(x=>x.date).filter(Boolean).sort(
 function renderShowList(){
   const el=document.getElementById('showList');
   if(!DB.shows.length){
-    el.innerHTML=`<div class="empty">${MASCOT}<span class="big">まだ公演がありません</span>右下の「＋」から最初の公演を登録しましょう🎭</div>`;
+    el.innerHTML=`<div class="empty">${MASCOT}<span class="big">まだ公演がありません</span>右下の「＋」から最初の公演を登録しましょう🎫</div>`;
     return;
   }
   const shows=[...DB.shows].sort((a,b)=>firstDate(b).localeCompare(firstDate(a)))
@@ -423,7 +423,7 @@ function renderShowList(){
     const st=showStats(s);
     const sgN=suggestMatches(s).length;
     return `<button class="show-card" onclick="openShow('${s.id}')">
-      <span class="emoji">🎭</span>
+      <span class="emoji">🎫</span>
       <h3>${esc(s.name)}</h3>
       <div class="date">${firstDate(s)?fmtDate(firstDate(s))+'〜':'日程未定'}　全${(s.stages||[]).length}ステージ　単価 ${yen(s.price)}</div>
       ${sgN?`<div style="margin-top:7px"><span class="gp-badge gp-c" style="font-size:11.5px;padding:4px 10px">💡 案内候補 ${sgN}人</span></div>`:''}
@@ -483,7 +483,7 @@ function saveShow(edit){
   else{
     DB.shows.push({id:uid(),...data,stages:[{id:uid(),date:v('f_date1')||'',label:''}]});
   }
-  saveData();closeModal();render();toast(edit?'保存しました':'公演を登録しました🎭');
+  saveData();closeModal();render();toast(edit?'保存しました':'公演を登録しました🎫');
 }
 function delShow(id){
   if(!confirm('この公演と、紐づく予約をすべて削除します。よろしいですか？'))return;
@@ -928,7 +928,7 @@ function renderPersonDetail(){
     <div class="section-title">📝 メモ・差し入れの記録</div>
     <button class="btn btn-ghost" style="width:100%;margin-bottom:10px" onclick="openMemoForm('${p.id}')">＋ メモを追加</button>
     ${memos.length?memos.map(m=>`<div class="memo-item"><div class="d">${esc(m.date)}</div><p>${esc(m.text)}</p><button class="btn btn-danger btn-sm" onclick="delMemo('${p.id}','${m.id}')">削除</button></div>`).join(''):`<div class="empty" style="padding:14px">会話の内容や差し入れなど、次に会うとき<br>役立つことをメモしておけます🌸</div>`}
-    <div class="section-title">🎭 来場・予約の履歴</div>
+    <div class="section-title">🎫 来場・予約の履歴</div>
     <div class="card">
     ${rs.length?rs.map(r=>`<div class="history-item">
       <span>${esc(r.show?r.show.name:'（削除された公演）')}<br><span class="hd">${r.stg?esc(stageName(r.stg)):''}</span></span>
@@ -996,7 +996,7 @@ function renderSummary(){
     <div class="sum-row">
       <div class="sum-box"><div class="ic">👥</div><div class="t">${isYear?'来場のあった方':'顧客数'}</div><div class="n">${peopleInScope}<small>人</small></div></div>
       <div class="sum-box"><div class="ic">🎫</div><div class="t">総予約枚数</div><div class="n">${totalTickets}<small>枚</small></div></div>
-      <div class="sum-box"><div class="ic">🎭</div><div class="t">公演数</div><div class="n">${shownShows.length}<small>本</small></div></div>
+      <div class="sum-box"><div class="ic">🎫</div><div class="t">公演数</div><div class="n">${shownShows.length}<small>本</small></div></div>
     </div>
     <div class="section-title">🎯 公演別の集客状況</div>
     ${shownShows.length?[...shownShows].sort((a,b)=>firstDate(b).localeCompare(firstDate(a))).map(s=>{
@@ -1073,6 +1073,7 @@ function renderSettings(){
       <div style="text-align:center;margin-bottom:8px">${MASCOT}</div>
       <p style="font-size:13.5px;line-height:1.8">「半券」は、役者・声優・歌手・MCなど、舞台やライブに立つすべてのパフォーマーのための顧客台帳です。あなたを目当てに足を運んでくれる人は、いちばん大切な財産。名前と顔と、交わした言葉を覚えていること——それがいちばんの営業です。</p>
       <p class="note">📲 ホーム画面に追加すると、アプリのように使えます。<br>iPhone：共有ボタン →「ホーム画面に追加」<br>Android：メニュー →「ホーム画面に追加」</p>
+      <p class="note" style="text-align:right;margin-top:10px">produced by ミサキカク</p>
     </div>
     <button class="btn btn-danger" style="width:100%" onclick="resetAll()">すべてのデータを削除する</button>`;
 }
@@ -1110,12 +1111,13 @@ function openGuide(){
     <div style="text-align:center">${MASCOT}</div>
     <h3 style="text-align:center">「半券」の使い方</h3>
     <p class="sub" style="text-align:center;margin-bottom:16px">3ステップで、あなたの営業がラクになります</p>
-    <div class="guide-step"><div class="no">1</div><p><b>🎭 公演を登録</b><br>公演名と単価、集客目標を登録。上演回（ステージ）は「10/12 昼」のように何回でも追加できます。会場や料金をまとめた<b>公演情報</b>を入れておくと、ワンタップでコピーしてお客さまへの案内に使えます。</p></div>
+    <div class="guide-step"><div class="no">1</div><p><b>🎫 公演を登録</b><br>公演名と単価、集客目標を登録。上演回（ステージ）は「10/12 昼」のように何回でも追加できます。会場や料金をまとめた<b>公演情報</b>を入れておくと、ワンタップでコピーしてお客さまへの案内に使えます。</p></div>
     <div class="guide-step"><div class="no">2</div><p><b>👥 お客さまを登録</b><br>お名前と連絡方法だけでOK。会話の内容や差し入れは<b>メモ</b>に残しておくと、次に会うときの話題になります。</p></div>
     <div class="guide-step"><div class="no">3</div><p><b>✓ 出欠をつける</b><br>公演を開いてステージを選ぶと、お客さまリストが出ます。<b>○をタップするだけで予約1枚</b>。右のステータスで「案内済み→リマインド→予約→前日案内→お礼」まで、丁寧なフォローも管理できます。</p></div>
     <div class="guide-step"><div class="no">💡</div><p><b>案内を送るときは</b><br>まずは「出演が決まったので案内を送ってもいいですか？」と<b>ひとこと確認</b>してから送ると好印象です。グループ一斉送信ではなく、<b>個人チャットやDMでひとりずつ</b>送りましょう。声をかける順番に迷ったら、${GRP.A.icon}<b>「${GRP.A.label}」</b>の方から優先すると喜ばれます。</p></div>
     <div class="guide-step"><div class="no">💌</div><p><b>本番が終わったら</b><br>来てくださった方への<b>お礼のご挨拶</b>を忘れずに。アプリが「お礼の挨拶前」の方をお知らせします。この一手間が、次の来場につながります。</p></div>
     <p class="note">💾 データはこのスマホの中だけに保存されます。設定タブから定期的にバックアップの書き出しを。</p>
+    <p class="note" style="text-align:right;margin-top:6px">produced by ミサキカク</p>
     <div class="actions"><button class="btn btn-primary" onclick="closeGuide()">はじめる！</button></div>
   `);
 }
