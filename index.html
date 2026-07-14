@@ -364,13 +364,36 @@ function sortBar(){
 }
 
 /* ================= 集計ヘルパー ================= */
+function stagePriceOf(stageId,show){
+  const s=show||DB.shows.find(x=>(x.stages||[]).some(st=>st.id===stageId));
+  if(!s)return 0;
+  const st=(s.stages||[]).find(x=>x.id===stageId);
+  return (st&&Number(st.price)>0)?Number(st.price):Number(s.price)||0;
+}
 function showStats(s){
   const rs=DB.resv.filter(r=>r.showId===s.id&&isReserved(r));
   const tickets=rs.reduce((a,r)=>a+Number(r.count||0),0);
-  const paid=rs.filter(r=>r.paid).reduce((a,r)=>a+Number(r.count||0),0);
-  const sales=tickets*Number(s.price||0);
+  const sales=rs.reduce((a,r)=>a+Number(r.count||0)*stagePriceOf(r.stageId,s),0);
+  const paidSales=rs.filter(r=>r.paid).reduce((a,r)=>a+Number(r.count||0)*stagePriceOf(r.stageId,s),0);
   const rate=s.quota>0?Math.round(tickets/s.quota*100):null;
-  return {tickets,paid,sales,rate};
+  return {tickets,sales,paidSales,rate};
+}
+function stageDateOf(stageId){
+  for(const s of DB.shows){const st=(s.stages||[]).find(x=>x.id===stageId);if(st)return st.date||'';}
+  return '';
+}
+function showStatsInYear(s,year){
+  const rs=DB.resv.filter(r=>r.showId===s.id&&isReserved(r)&&stageDateOf(r.stageId).slice(0,4)===String(year));
+  const tickets=rs.reduce((a,r)=>a+Number(r.count||0),0);
+  const sales=rs.reduce((a,r)=>a+Number(r.count||0)*stagePriceOf(r.stageId,s),0);
+  const paidSales=rs.filter(r=>r.paid).reduce((a,r)=>a+Number(r.count||0)*stagePriceOf(r.stageId,s),0);
+  return {tickets,sales,paidSales};
+}
+function availableYears(){
+  const ys=new Set();
+  DB.shows.forEach(s=>(s.stages||[]).forEach(st=>{if(st.date)ys.add(st.date.slice(0,4));}));
+  const arr=[...ys].sort((a,b)=>b.localeCompare(a));
+  return arr.length?arr:[String(new Date().getFullYear())];
 }
 
 /* ================= 公演一覧 ================= */
@@ -421,14 +444,16 @@ function openShowForm(edit){
     <h3>${edit?'公演を編集':'公演を登録'}</h3>
     <label>公演名 *</label><input id="f_name" value="${esc(s.name||'')}" placeholder="例：歌詞から紡ぐ物語　1">
     <div class="row2">
-      <div><label>チケット単価（円）</label><input id="f_price" type="number" inputmode="numeric" value="${s.price||''}" placeholder="5000"></div>
+      <div><label>チケット単価（円）</label><input id="f_price" type="number" inputmode="numeric" value="${s.price||''}" placeholder="2800"></div>
       <div><label>集客目標（枚・任意）</label><input id="f_quota" type="number" inputmode="numeric" value="${s.quota||''}" placeholder="10"></div>
     </div>
-    <label>席種（任意・カンマ区切り）</label><input id="f_seats" value="${esc(s.seats||'')}" placeholder="例：S席,A席">
-    <label>公演の特徴（カンマ区切り・任意）</label><input id="f_features" value="${esc(s.features||'')}" placeholder="例：読劇,オムニバス,トーク など（名詞で入力）">
+    <label>席種（任意・カンマ区切り）</label><input id="f_seats" value="${esc(s.seats||'')}" placeholder="例：最前席,スタンディング">
+    <label>公演の特徴（カンマ区切り・任意）</label><textarea id="f_features" rows="2" placeholder="例：朗読,オムニバス,トーク,ミサキカクなど&#10;※名詞で登録します">${esc(s.features||'')}</textarea>
     <p class="note" style="margin-top:4px">お客さまの「好きなこと・習慣」やメモと照らして、「この方に案内を送ろう」とご提案します。</p>
-    <label>公演情報（会場・料金・注意事項など。お客さまへの案内にコピーして使えます）</label>
-    <textarea id="f_info" rows="5" placeholder="例：&#10;舞台『春の夜の夢』&#10;会場：下北沢〇〇劇場&#10;チケット：前売5,000円／当日5,500円&#10;開場は開演の30分前です">${esc(s.info||'')}</textarea>
+    <label>公演情報（会場・料金・注意事項など。お客さまへの案内にコピーして使えます）
+      <button type="button" class="btn btn-ghost btn-sm" style="float:right;margin-top:-4px" onclick="insertInfoTemplate()">📋 ひな形を入れる</button>
+    </label>
+    <textarea id="f_info" rows="6" placeholder="例：&#10;ミサキカク毎週公演「歌詞から紡ぐ物語　1」&#10;日時：7月1日　19:30開演&#10;会場：あさがやドラム（南阿佐ヶ谷）&#10;チケット：会場2800円＋1d/配信2800円＋手数料160円&#10;開場は開演の30分前です。">${esc(s.info||'')}</textarea>
     ${edit?'':`<label>初回ステージの日付（あとから追加できます）</label><input id="f_date1" type="date">`}
     <div class="actions">
       <button class="btn btn-ghost" onclick="closeModal()">やめる</button>
@@ -436,6 +461,14 @@ function openShowForm(edit){
     </div>
     ${edit?`<button class="btn btn-danger" style="width:100%;margin-top:6px" onclick="delShow('${edit}')">この公演を削除する</button>`:''}
   `);
+}
+function insertInfoTemplate(){
+  const ta=document.getElementById('f_info');
+  const name=v('f_name');
+  const tpl=`${name||'（公演名）'}\n日時：\n会場：\nチケット：\n開場は開演の30分前です。`;
+  if(ta.value.trim()&&!confirm('公演情報の内容を、ひな形で上書きします。よろしいですか？'))return;
+  ta.value=tpl;
+  ta.focus();
 }
 function saveShow(edit){
   const name=v('f_name');if(!name)return toast('公演名を入れてください');
@@ -490,7 +523,7 @@ function renderShowDetail(){
     ${s.quota>0?`<div class="card" style="padding:12px 16px">
       <div class="gauge-label"><span>集客目標 ${s.quota}枚</span><b>${st.tickets}枚（${st.rate}%）${st.rate>=100?'🎉 達成！':''}</b></div>
       <div class="gauge"><i class="${st.rate>=100?'full':''}" style="width:${Math.min(st.rate,100)}%"></i></div>
-      <div class="show-stats"><span>💰 売上見込 <b>${yen(st.sales)}</b></span><span>✅ 入金済 <b>${yen(st.paid*s.price)}</b></span></div>
+      <div class="show-stats"><span>💰 売上見込 <b>${yen(st.sales)}</b></span><span>✅ 入金済 <b>${yen(st.paidSales)}</b></span></div>
     </div>`:`<div class="card" style="padding:12px 16px"><div class="show-stats" style="margin:0"><span>🎫 予約 <b>${st.tickets}</b>枚</span><span>💰 売上見込 <b>${yen(st.sales)}</b></span></div></div>`}
     ${(()=>{
       const sg=suggestMatches(s);
@@ -505,7 +538,7 @@ function renderShowDetail(){
     })()}
     <div class="section-title">🗓 ステージを選ぶ</div>
     <div class="stage-scroller">
-      ${s.stages.map(x=>`<button class="stage-chip ${x.id===curStage?'on':''}" onclick="curStage='${x.id}';renderShowDetail()">${esc(stageName(x))}${isPast(x)?' ✔':''}</button>`).join('')}
+      ${s.stages.map(x=>`<button class="stage-chip ${x.id===curStage?'on':''}" onclick="curStage='${x.id}';renderShowDetail()">${esc(stageName(x))}${x.price>0?` ¥${Number(x.price).toLocaleString()}`:''}${isPast(x)?' ✔':''}</button>`).join('')}
       <button class="stage-chip add" onclick="openStageForm('${s.id}')">＋ 追加</button>
     </div>
     ${curStage?renderRoll(s):`<div class="empty">${MASCOT}<span class="big">ステージがありません</span>「＋追加」から日時を登録しましょう。</div>`}
@@ -543,9 +576,9 @@ function renderRoll(s){
     .filter(p=>!qRoll||[p.name,p.kana].join(' ').toLowerCase().includes(qRoll.toLowerCase()));
   return `
     <div class="section-title">${past?'🌙':'☀️'} ${esc(stageName(stg))} のお客さま（${inCount}枚）
-      <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="openStageForm('${s.id}','${stg.id}')">回を編集</button>
+      <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="openStageForm('${s.id}','${stg.id}')">ステージを編集</button>
     </div>
-    ${past?`<p class="note" style="margin:0 2px 10px">この回は<b>本番後</b>です。お礼のご挨拶を送ったらステータスを更新しましょう💌</p>`:''}
+    ${past?`<p class="note" style="margin:0 2px 10px">このステージは<b>本番後</b>です。お礼のご挨拶を送ったらステータスを更新しましょう💌</p>`:''}
     ${sortBar()}
     <div class="searchbar"><input placeholder="お名前で絞り込み" value="${esc(qRoll)}" oninput="qRoll=this.value;renderShowDetail()"></div>
     ${DB.people.length===0?`<div class="empty">${MASCOT}<span class="big">まだ顧客がいません</span>下のボタンから登録すると、ここに<br>お客さまリストとして並びます。</div>`
@@ -560,7 +593,7 @@ function renderRoll(s){
         </div>`;
       }
       const stDef=ST[r.status];
-      const extra=[isReserved(r)?`${r.count}枚`:'',r.kind==='haishin'?'配信':'',r.seat?esc(r.seat):'',r.paid?'￥':''].filter(Boolean).join('・');
+      const extra=[isReserved(r)?`${r.count}枚`:'',r.seat?esc(r.seat):'',r.paid?'￥':''].filter(Boolean).join('・');
       return `<div class="roll-row ${isReserved(r)?'in':''} ${r.status==='cancel'?'cn':''}">
         <button class="check" onclick="checkTap('${r.id}')" aria-label="予約の切り替え">${isReserved(r)?'✓':'＋'}</button>
         <button class="nm" onclick="openResvEdit('${r.id}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}${extra?`<small>${extra}</small>`:''}</button>
@@ -576,26 +609,41 @@ function openStageForm(showId,stageId){
   openModal(`
     <h3>${stageId?'ステージを編集':'ステージを追加'}</h3>
     <div class="row2">
-      <div><label>日付</label><input id="f_sdate" type="date" value="${stg.date||''}"></div>
-      <div><label>回名（任意）</label><input id="f_slabel" value="${esc(stg.label||'')}" placeholder="例：昼 / 夜 / 千秋楽"></div>
+      <div><label>日付（任意）</label><input id="f_sdate" type="date" value="${stg.date||''}"></div>
+      <div><label>ステージ名</label><input id="f_slabel" value="${esc(stg.label||'')}" placeholder="${stageId?'例：昼':'例：昼,16:00,千秋楽,📱配信'}"></div>
     </div>
+    ${stageId?'':`<p class="note" style="margin-top:4px">カンマ区切りで複数入力すると、まとめてステージを追加できます（日付は共通で入ります）。</p>`}
+    <label>このステージだけの単価（円・任意）</label><input id="f_sprice" type="number" inputmode="numeric" value="${stg.price||''}" placeholder="空欄なら公演の単価（${yen(s.price)}）を使います">
+    <p class="note" style="margin-top:4px">配信だけ料金が違う、などの場合にお使いください。${stageId?'':'複数まとめて追加する場合、この単価は全ステージ共通で入ります。'}</p>
     <div class="actions">
       <button class="btn btn-ghost" onclick="closeModal()">やめる</button>
       <button class="btn btn-primary" onclick="saveStage('${showId}','${stageId||''}')">${stageId?'保存する':'追加する'}</button>
     </div>
-    ${stageId?`<button class="btn btn-danger" style="width:100%;margin-top:6px" onclick="delStage('${showId}','${stageId}')">この回を削除する</button>`:''}
+    ${stageId?`<button class="btn btn-danger" style="width:100%;margin-top:6px" onclick="delStage('${showId}','${stageId}')">このステージを削除する</button>`:''}
   `);
 }
 function saveStage(showId,stageId){
   const s=DB.shows.find(x=>x.id===showId);
-  const data={date:v('f_sdate'),label:v('f_slabel')};
-  if(stageId){Object.assign(s.stages.find(x=>x.id===stageId),data);}
-  else{const id=uid();s.stages.push({id,...data});curStage=id;}
+  const date=v('f_sdate');
+  const price=Number(v('f_sprice'))||0;
+  if(stageId){
+    Object.assign(s.stages.find(x=>x.id===stageId),{date,label:v('f_slabel'),price});
+  }else{
+    const labels=v('f_slabel').split(',').map(x=>x.trim()).filter(Boolean);
+    if(!labels.length)labels.push('');
+    let lastId=null;
+    labels.forEach(label=>{
+      const id=uid();
+      s.stages.push({id,date,label,price});
+      lastId=id;
+    });
+    curStage=lastId;
+  }
   s.stages.sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
   saveData();closeModal();render();toast(stageId?'保存しました':'ステージを追加しました');
 }
 function delStage(showId,stageId){
-  if(!confirm('この回と、紐づく予約を削除します。よろしいですか？'))return;
+  if(!confirm('このステージと、紐づく予約を削除します。よろしいですか？'))return;
   const s=DB.shows.find(x=>x.id===showId);
   s.stages=s.stages.filter(x=>x.id!==stageId);
   DB.resv=DB.resv.filter(r=>r.stageId!==stageId);
@@ -605,7 +653,7 @@ function delStage(showId,stageId){
 
 /* ================= 予約・ステータス ================= */
 function quickAdd(personId,showId,stageId){
-  DB.resv.push({id:uid(),showId,stageId,personId,count:1,status:'yoyaku_zumi',paid:false,note:'',kind:'kaijo',seat:''});
+  DB.resv.push({id:uid(),showId,stageId,personId,count:1,status:'yoyaku_zumi',paid:false,note:'',seat:''});
   saveData();renderShowDetail();toast('予約を入れました✓');
 }
 function checkTap(id){
@@ -643,7 +691,7 @@ function setStatus(personId,showId,stageId,resvId,status){
   let r=resvId?DB.resv.find(x=>x.id===resvId):null;
   if(!r){
     if(status==='annai_mae'){closeModal();return;}
-    r={id:uid(),showId,stageId,personId,count:1,status,paid:false,note:'',kind:'kaijo',seat:''};
+    r={id:uid(),showId,stageId,personId,count:1,status,paid:false,note:'',seat:''};
     DB.resv.push(r);
   }else if(status==='annai_mae'&&r.count<=1&&!r.paid&&!r.note){
     /* 案内前に戻す=レコード削除でスッキリ */
@@ -662,15 +710,7 @@ function openResvEdit(id){
   openModal(`
     <h3>${esc(p?p.name:'')} さん</h3>
     <p class="sub">${esc(s?s.name:'')}${s?'・'+esc(stageName(s.stages.find(x=>x.id===r.stageId)||{})):''}　ステータス：${ST[r.status].label}</p>
-    <div class="row2">
-      <div><label>枚数</label><input id="f_count" type="number" inputmode="numeric" value="${r.count}" min="1"></div>
-      <div><label>観劇方法</label>
-        <div class="seg" id="segKind" style="margin-top:0">
-          <button type="button" class="${r.kind!=='haishin'?'on':''}" data-k="kaijo" onclick="segPick(this)">🏟 会場</button>
-          <button type="button" class="${r.kind==='haishin'?'on':''}" data-k="haishin" onclick="segPick(this)">📱 配信</button>
-        </div>
-      </div>
-    </div>
+    <label>枚数</label><input id="f_count" type="number" inputmode="numeric" value="${r.count}" min="1">
     ${seats.length?`<label>席種</label><select id="f_seat"><option value="">指定なし</option>${seats.map(x=>`<option value="${esc(x)}" ${r.seat===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`:''}
     <label style="display:flex;align-items:center;gap:8px;margin-top:16px;font-size:14px;color:var(--ink)"><input type="checkbox" id="f_paid" ${r.paid?'checked':''} style="width:22px;height:22px;accent-color:var(--midori)"> 支払済み</label>
     <label>メモ（受渡方法・同伴者など）</label><input id="f_note" value="${esc(r.note||'')}" placeholder="例：当日受付渡し">
@@ -681,14 +721,9 @@ function openResvEdit(id){
     <button class="btn btn-danger" style="width:100%;margin-top:6px" onclick="removeResvModal('${r.id}')">この予約を取り消す</button>
   `);
 }
-function segPick(btn){
-  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-}
 function updateResv(id){
   const r=DB.resv.find(x=>x.id===id);if(!r)return;
-  const kindBtn=document.querySelector('#segKind button.on');
-  Object.assign(r,{count:Number(v('f_count'))||1,kind:kindBtn?kindBtn.dataset.k:'kaijo',seat:v('f_seat'),note:v('f_note'),paid:document.getElementById('f_paid').checked});
+  Object.assign(r,{count:Number(v('f_count'))||1,seat:v('f_seat'),note:v('f_note'),paid:document.getElementById('f_paid').checked});
   saveData();closeModal();render();toast('保存しました');
 }
 function removeResvModal(id){
@@ -819,8 +854,8 @@ function openPersonForm(edit){
   const p=edit?DB.people.find(x=>x.id===edit):{};
   openModal(`
     <h3>${edit?'顧客情報を編集':'お客さまを登録'}</h3>
-    <label>お名前 *</label><input id="f_pname" value="${esc(p.name||'')}" placeholder="">
-    <label>よみがな</label><input id="f_kana" value="${esc(p.kana||'')}" placeholder="">
+    <label>お名前 *</label><input id="f_pname" value="${esc(p.name||'')}" placeholder="例：山田太郎">
+    <label>ヨミガナ</label><input id="f_kana" value="${esc(p.kana||'')}" placeholder="例：ヤマダタロウ">
     <label>連絡方法（LINE・X・メールなど、連絡が取れる手段）</label><input id="f_contact" value="${esc(p.contact||'')}" placeholder="例：LINE / X @hanako_yamada">
     <label>好きなこと・習慣（任意）</label>
     <textarea id="f_personal" rows="3" placeholder="例：お笑いが好き。お酒が好き。散歩が趣味。歌が好きでよくライブに出る。など（ポジティブに書く）">${esc(p.personal||'')}</textarea>
@@ -876,7 +911,7 @@ function renderPersonDetail(){
     </div>
     <div class="card">
       ${p.group&&GRP[p.group]?`<div class="kv"><div class="k">🤝 グループ</div><div class="v"><span class="gp-badge ${GRP[p.group].cls}">${GRP[p.group].icon} ${p.group}：${GRP[p.group].label}</span></div></div>`:''}
-      ${p.kana?`<div class="kv"><div class="k">よみがな</div><div class="v">${esc(p.kana)}</div></div>`:''}
+      ${p.kana?`<div class="kv"><div class="k">ヨミガナ</div><div class="v">${esc(p.kana)}</div></div>`:''}
       <div class="kv"><div class="k">📮 連絡方法</div><div class="v">${p.contact?esc(p.contact):'未登録'}</div></div>
       <div class="kv"><div class="k">🎫 来場</div><div class="v"><b>${visits.length}回</b>（累計 ${visits.reduce((a,r)=>a+Number(r.count||0),0)}枚）</div></div>
     </div>
@@ -891,7 +926,7 @@ function renderPersonDetail(){
     <div class="card">
     ${rs.length?rs.map(r=>`<div class="history-item">
       <span>${esc(r.show?r.show.name:'（削除された公演）')}<br><span class="hd">${r.stg?esc(stageName(r.stg)):''}</span></span>
-      <span style="text-align:right">${isReserved(r)?r.count+'枚':''}${r.kind==='haishin'?'（配信）':r.seat?`（${esc(r.seat)}）`:''}<br><span class="hd">${ST[r.status]?ST[r.status].label:''}${r.paid?'・支払済':''}</span></span>
+      <span style="text-align:right">${isReserved(r)?r.count+'枚':''}${r.seat?`（${esc(r.seat)}）`:''}<br><span class="hd">${ST[r.status]?ST[r.status].label:''}${r.paid?'・支払済':''}</span></span>
     </div>`).join(''):`<div class="empty" style="padding:10px">まだ履歴がありません。</div>`}
     </div>`;
 }
@@ -919,10 +954,9 @@ function delMemo(pid,mid){
 }
 
 /* ================= 集計 ================= */
-function cheerComment(){
-  const withQuota=DB.shows.filter(s=>s.quota>0);
-  const totalQ=withQuota.reduce((a,s)=>a+s.quota,0);
-  const totalT=withQuota.reduce((a,s)=>a+showStats(s).tickets,0);
+let sumMode='cumulative'; // 'cumulative' | 'year'
+let sumYear=String(new Date().getFullYear());
+function cheerComment(totalQ,totalT){
   if(!totalQ)return 'あなたが出演したことで動いたお金です。この数字は、あなたを観たい人がいる証です🌸';
   const rate=Math.round(totalT/totalQ*100);
   if(rate>=100)return `目標達成、おめでとうございます🎉 あなたが出演したことで、これだけのお金が動きました。堂々と胸を張ってください！`;
@@ -932,31 +966,46 @@ function cheerComment(){
 }
 function renderSummary(){
   const el=document.getElementById('view-summary');
-  const totalSales=DB.shows.reduce((a,s)=>a+showStats(s).sales,0);
-  const totalTickets=DB.resv.filter(isReserved).reduce((a,r)=>a+Number(r.count||0),0);
+  const years=availableYears();
+  if(!years.includes(sumYear))sumYear=years[0];
+  const isYear=sumMode==='year';
+  const shownShows=isYear?DB.shows.filter(s=>(s.stages||[]).some(st=>(st.date||'').slice(0,4)===sumYear)):DB.shows;
+  const statOf=s=>isYear?showStatsInYear(s,sumYear):showStats(s);
+  const totalSales=shownShows.reduce((a,s)=>a+statOf(s).sales,0);
+  const totalTickets=shownShows.reduce((a,s)=>a+statOf(s).tickets,0);
+  const withQuota=shownShows.filter(s=>s.quota>0);
+  const totalQ=withQuota.reduce((a,s)=>a+s.quota,0);
+  const totalT=withQuota.reduce((a,s)=>a+statOf(s).tickets,0);
+  const peopleInScope=isYear?new Set(DB.resv.filter(r=>isReserved(r)&&stageDateOf(r.stageId).slice(0,4)===sumYear).map(r=>r.personId)).size:DB.people.length;
   el.innerHTML=`
-    <div class="sum-hero"><span class="deco">🎫</span><div class="t">動いたお金（全公演の売上見込）</div><div class="n">${yen(totalSales)}</div>
-      <p style="font-size:12px;line-height:1.7;margin-top:8px;opacity:.95">${cheerComment()}</p>
+    <div class="stage-scroller" style="padding-top:0">
+      <button class="stage-chip ${sumMode==='cumulative'?'on':''}" onclick="sumMode='cumulative';renderSummary()">累計集計</button>
+      <button class="stage-chip ${sumMode==='year'?'on':''}" onclick="sumMode='year';renderSummary()">年間集計</button>
+      ${isYear?years.map(y=>`<button class="stage-chip ${sumYear===y?'on':''}" onclick="sumYear='${y}';renderSummary()">${y}年</button>`).join(''):''}
+    </div>
+    <div class="sum-hero"><span class="deco">🎫</span><div class="t">動いたお金（${isYear?sumYear+'年の':'全公演の'}売上見込）</div><div class="n">${yen(totalSales)}</div>
+      <p style="font-size:12px;line-height:1.7;margin-top:8px;opacity:.95">${cheerComment(totalQ,totalT)}</p>
       <p style="font-size:10.5px;opacity:.7;margin-top:6px">※チケット売上の見込額であり、あなたの収入（ギャラ）とは異なります。</p>
     </div>
     <div class="sum-row">
-      <div class="sum-box"><div class="ic">👥</div><div class="t">顧客数</div><div class="n">${DB.people.length}<small>人</small></div></div>
+      <div class="sum-box"><div class="ic">👥</div><div class="t">${isYear?'来場のあった方':'顧客数'}</div><div class="n">${peopleInScope}<small>人</small></div></div>
       <div class="sum-box"><div class="ic">🎫</div><div class="t">総予約枚数</div><div class="n">${totalTickets}<small>枚</small></div></div>
-      <div class="sum-box"><div class="ic">🎭</div><div class="t">公演数</div><div class="n">${DB.shows.length}<small>本</small></div></div>
+      <div class="sum-box"><div class="ic">🎭</div><div class="t">公演数</div><div class="n">${shownShows.length}<small>本</small></div></div>
     </div>
     <div class="section-title">🎯 公演別の集客状況</div>
-    ${DB.shows.length?[...DB.shows].sort((a,b)=>firstDate(b).localeCompare(firstDate(a))).map(s=>{
-      const st=showStats(s);
+    ${shownShows.length?[...shownShows].sort((a,b)=>firstDate(b).localeCompare(firstDate(a))).map(s=>{
+      const st=statOf(s);
+      const rate=s.quota>0?Math.round(st.tickets/s.quota*100):null;
       return `<div class="card">
         <b style="font-family:var(--kiwi)">${esc(s.name)}</b>
         <div style="font-size:12px;color:var(--sub)">${firstDate(s)?fmtDate(firstDate(s))+'〜':'日程未定'}　全${(s.stages||[]).length}ステージ</div>
         ${s.quota>0?`<div class="gauge-wrap">
-          <div class="gauge-label"><span>集客目標 ${s.quota}枚</span><b>${st.tickets}枚（${st.rate}%）${st.rate>=100?'🎉':''}</b></div>
-          <div class="gauge"><i class="${st.rate>=100?'full':''}" style="width:${Math.min(st.rate,100)}%"></i></div>
+          <div class="gauge-label"><span>集客目標 ${s.quota}枚</span><b>${st.tickets}枚（${rate}%）${rate>=100?'🎉':''}</b></div>
+          <div class="gauge"><i class="${rate>=100?'full':''}" style="width:${Math.min(rate,100)}%"></i></div>
         </div>`:`<div class="show-stats"><span>予約 <b>${st.tickets}</b>枚</span></div>`}
-        <div class="show-stats"><span>💰 売上見込 <b>${yen(st.sales)}</b></span><span>✅ 入金済 <b>${yen(st.paid*s.price)}</b></span></div>
+        <div class="show-stats"><span>💰 売上見込 <b>${yen(st.sales)}</b></span><span>✅ 入金済 <b>${yen(st.paidSales)}</b></span></div>
       </div>`;
-    }).join(''):`<div class="empty">${MASCOT}公演を登録すると、ここに集客状況が並びます。</div>`}`;
+    }).join(''):`<div class="empty">${MASCOT}${isYear?sumYear+'年の公演記録はまだありません。':'公演を登録すると、ここに集客状況が並びます。'}</div>`}`;
 }
 
 /* ================= ホーム画面に追加(手順案内) ================= */
