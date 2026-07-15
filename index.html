@@ -70,8 +70,8 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .fab{position:fixed;right:18px;bottom:calc(22px + env(safe-area-inset-bottom));height:52px;padding:0 20px 0 18px;border-radius:26px;background:var(--kaki);color:#fff;font-size:14px;font-weight:700;box-shadow:0 4px 0 var(--kaki-deep),0 6px 16px rgba(213,96,63,.3);z-index:40;line-height:1;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .fab .plus{font-size:20px;line-height:1}
 .fab:active{transform:translateY(3px);box-shadow:0 1px 0 var(--kaki-deep)}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));background:var(--ink);color:#fff;font-size:13.5px;font-weight:700;padding:10px 22px;border-radius:24px;z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap}
-.toast.on{opacity:1}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));background:var(--ink);color:#fff;font-size:13.5px;font-weight:700;padding:10px 22px;border-radius:24px;z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90vw;text-align:center}
+.toast.on{opacity:1;pointer-events:auto}
 
 .show-card{width:100%;text-align:left;background:var(--card);border:2px solid var(--line);border-radius:var(--radius);padding:15px 16px;margin-bottom:12px;position:relative}
 .show-card .emoji{position:absolute;right:14px;top:13px;font-size:20px}
