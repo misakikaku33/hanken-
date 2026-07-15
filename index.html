@@ -800,6 +800,7 @@ function openStatusPicker(personId,showId,stageId,resvId){
     <div class="st-phase">🌙 本番後${past?'（いまはこちら）':''}</div>
     <div class="st-grid">${mkBtns(POST_KEYS.filter(k=>k!=='cancel'))}</div>
     <p class="note">「案内前〜リマインド済み」は予約枚数に数えません。「予約済み」以降が集計対象になります。</p>
+    <button class="btn btn-ghost" style="width:100%;margin-top:10px" onclick="closeModal();setExcluded('${personId}',true)">📵 この方を対象外にする（今後すべての公演で案内しない）</button>
   `);
 }
 function setStatus(personId,showId,stageId,resvId,status){
