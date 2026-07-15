@@ -453,7 +453,7 @@ function openShowForm(edit){
       <div><label>チケット単価（円）</label><input id="f_price" type="number" inputmode="numeric" value="${s.price||''}" placeholder="2800"></div>
       <div><label>集客目標（枚・任意）</label><input id="f_quota" type="number" inputmode="numeric" value="${s.quota||''}" placeholder="10"></div>
     </div>
-    <label>席種（任意・カンマ区切り）</label><input id="f_seats" value="${esc(s.seats||'')}" placeholder="例：最前席,スタンディング">
+    <label>席種（カンマ区切り・任意）</label><input id="f_seats" value="${esc(s.seats||'')}" placeholder="例：最前席,スタンディ,S席,A席">
     <label>公演の特徴（カンマ区切り・任意）</label><textarea id="f_features" rows="2" placeholder="例：朗読,オムニバス,トーク,ミサキカクなど&#10;※名詞で登録します">${esc(s.features||'')}</textarea>
     <p class="note" style="margin-top:4px">お客さまの「好きなこと・習慣」やメモと照らして、「この方に案内を送ろう」とご提案します。</p>
     <label>公演情報（会場・料金・注意事項など。お客さまへの案内にコピーして使えます）
@@ -614,10 +614,8 @@ function openStageForm(showId,stageId){
   const stg=stageId?s.stages.find(x=>x.id===stageId):{};
   openModal(`
     <h3>${stageId?'ステージを編集':'ステージを追加'}</h3>
-    <div class="row2">
-      <div><label>日付（任意）</label><input id="f_sdate" type="date" value="${stg.date||''}"></div>
-      <div><label>ステージ名</label><input id="f_slabel" value="${esc(stg.label||'')}" placeholder="${stageId?'例：昼':'例：昼,16:00,千秋楽,📱配信'}"></div>
-    </div>
+    <label>日付（任意）</label><input id="f_sdate" type="date" value="${stg.date||''}">
+    <label>ステージ名</label><input id="f_slabel" value="${esc(stg.label||'')}" placeholder="${stageId?'例：昼':'例：昼,16:00,千秋楽'}">
     ${stageId?'':`<p class="note" style="margin-top:4px">カンマ区切りで複数入力すると、まとめてステージを追加できます（日付は共通で入ります）。</p>`}
     <label>このステージだけの単価（円・任意）</label><input id="f_sprice" type="number" inputmode="numeric" value="${stg.price||''}" placeholder="空欄なら公演の単価（${yen(s.price)}）を使います">
     <p class="note" style="margin-top:4px">配信だけ料金が違う、などの場合にお使いください。${stageId?'':'複数まとめて追加する場合、この単価は全ステージ共通で入ります。'}</p>
@@ -831,12 +829,35 @@ function renderPeopleList(){
     </button>`;
   }).join('');
 }
+/* ================= 名前の正規化・類似判定 ================= */
+function normalizeName(name){
+  let s=(name||'');
+  s=s.replace(/\u3000/g,' '); // 全角スペース→半角
+  s=s.replace(/[Ａ-Ｚａ-ｚ０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)); // 全角英数→半角
+  s=s.replace(/\s+/g,''); // スペース除去
+  s=s.replace(/(様|さん|くん|ちゃん|氏)$/,''); // 敬称除去
+  return s.trim();
+}
+function levenshtein(a,b){
+  const m=a.length,n=b.length;
+  if(!m)return n;if(!n)return m;
+  let prev=Array.from({length:n+1},(_,i)=>i);
+  for(let i=1;i<=m;i++){
+    const cur=[i];
+    for(let j=1;j<=n;j++){
+      cur[j]=a[i-1]===b[j-1]?prev[j-1]:1+Math.min(prev[j-1],prev[j],cur[j-1]);
+    }
+    prev=cur;
+  }
+  return prev[n];
+}
 function openBulkForm(){
   openModal(`
     <h3>📥 名前をまとめて登録</h3>
     <p class="sub">1行に1人ずつ、お名前を入力してください。連絡方法などはあとから追加できます。</p>
     <label>お名前（改行区切り）</label>
     <textarea id="f_bulk" rows="7" placeholder="例：&#10;林明日香&#10;藤田愛&#10;前田悠斗&#10;松本浩二&#10;村上優子"></textarea>
+    <p class="note">スペースの有無や「さん」「様」などの敬称は無視して、登録済みの方と自動で見分けます。</p>
     <div class="actions">
       <button class="btn btn-ghost" onclick="closeModal()">やめる</button>
       <button class="btn btn-primary" onclick="saveBulk()">まとめて登録する</button>
@@ -845,15 +866,80 @@ function openBulkForm(){
 function saveBulk(){
   const names=v('f_bulk').split('\n').map(x=>x.trim()).filter(Boolean);
   if(!names.length)return toast('お名前を入れてください');
-  const existing=DB.people.map(p=>p.name);
+  const existingNorm=new Map(DB.people.map(p=>[normalizeName(p.name),p]));
   let added=0,skipped=0;
+  const newPeople=[];
   names.forEach(name=>{
-    if(existing.includes(name)){skipped++;return;}
-    DB.people.push({id:uid(),name,kana:'',contact:'',personal:'',ng:'',group:'',memos:[]});
-    existing.push(name);added++;
+    const norm=normalizeName(name);
+    if(!norm)return;
+    if(existingNorm.has(norm)){skipped++;return;} // 表記ゆれ込みで完全一致→自動スキップ
+    const person={id:uid(),name,kana:'',contact:'',personal:'',ng:'',group:'',memos:[]};
+    DB.people.push(person);
+    existingNorm.set(norm,person);
+    newPeople.push(person);
+    added++;
   });
-  saveData();closeModal();render();
-  toast(`${added}人を登録しました${skipped?`（${skipped}人は同名のためスキップ）`:''}`);
+  saveData();
+  /* 似ている名前(1文字違いなど)がないかチェック */
+  const pairs=[];
+  const seen=new Set();
+  newPeople.forEach(np=>{
+    const npNorm=normalizeName(np.name);
+    DB.people.forEach(op=>{
+      if(op.id===np.id)return;
+      const key=[np.id,op.id].sort().join('-');
+      if(seen.has(key))return;
+      const opNorm=normalizeName(op.name);
+      if(opNorm===npNorm)return; // 完全一致は既にスキップ済のはず
+      const dist=levenshtein(npNorm,opNorm);
+      const maxLen=Math.max(npNorm.length,opNorm.length);
+      if(maxLen>=2&&dist<=1){
+        pairs.push({newP:np,otherP:op});
+        seen.add(key);
+      }
+    });
+  });
+  if(pairs.length){
+    showSimilarReview(pairs,added,skipped);
+  }else{
+    closeModal();render();
+    toast(`${added}人を登録しました${skipped?`（${skipped}人は登録済みのためスキップ）`:''}`);
+  }
+}
+function showSimilarReview(pairs,added,skipped){
+  render(); /* 裏側は先に更新しておく */
+  openModal(`
+    <h3>👀 似ているお名前があります</h3>
+    <p class="sub">${added}人を登録しました${skipped?`（${skipped}人は登録済みのためスキップ）`:''}。念のため、似た名前をご確認ください。</p>
+    <div id="similarList">
+    ${pairs.map((p,i)=>`<div class="card" id="simcard_${i}" style="padding:12px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div><b>${esc(p.newP.name)}</b><span class="note" style="margin:0 0 0 6px">（今回登録）</span></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px">
+        <div><b>${esc(p.otherP.name)}</b><span class="note" style="margin:0 0 0 6px">（登録済み）</span></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="mergeSimilar('${p.newP.id}','${p.otherP.id}','simcard_${i}')">同じ人なので統合する</button>
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="dismissSimilar('simcard_${i}')">別人のままでOK</button>
+      </div>
+    </div>`).join('')}
+    </div>
+    <div class="actions"><button class="btn btn-primary" onclick="closeModal();render()">閉じる</button></div>
+  `);
+}
+function mergeSimilar(newId,keepId,cardId){
+  /* 今回登録した方(newId)を削除し、既存(keepId)を残す */
+  DB.people=DB.people.filter(x=>x.id!==newId);
+  DB.resv=DB.resv.filter(r=>r.personId!==newId); /* 今登録したばかりなので通常は紐づく予約はない */
+  saveData();
+  const card=document.getElementById(cardId);
+  if(card){card.innerHTML='<p style="font-size:13px;color:var(--sub)">統合しました。</p>';}
+  toast('統合しました');
+}
+function dismissSimilar(cardId){
+  const card=document.getElementById(cardId);
+  if(card){card.innerHTML='<p style="font-size:13px;color:var(--sub)">別人として登録済みです。</p>';}
 }
 function openPerson(id){curPerson=id;render();}
 function openPersonForm(edit){
@@ -1111,9 +1197,9 @@ function openGuide(){
     <div style="text-align:center">${MASCOT}</div>
     <h3 style="text-align:center">「半券」の使い方</h3>
     <p class="sub" style="text-align:center;margin-bottom:16px">3ステップで、あなたの営業がラクになります</p>
-    <div class="guide-step"><div class="no">1</div><p><b>📅 公演を登録</b><br>公演名と単価、集客目標を登録。上演回（ステージ）は「10/12 昼」のように何回でも追加できます。会場や料金をまとめた<b>公演情報</b>を入れておくと、ワンタップでコピーしてお客さまへの案内に使えます。</p></div>
-    <div class="guide-step"><div class="no">2</div><p><b>👥 お客さまを登録</b><br>お名前と連絡方法だけでOK。会話の内容や差し入れは<b>メモ</b>に残しておくと、次に会うときの話題になります。</p></div>
-    <div class="guide-step"><div class="no">3</div><p><b>✓ 出欠をつける</b><br>公演を開いてステージを選ぶと、お客さまリストが出ます。<b>○をタップするだけで予約1枚</b>。右のステータスで「案内済み→リマインド→予約→前日案内→お礼」まで、丁寧なフォローも管理できます。</p></div>
+    <div class="guide-step"><div class="no">1</div><p><b>📅 公演を登録</b><br>公演名と単価、集客目標を登録。上演回（ステージ）は「10/12 昼」「10/12 19:00」のように何回でも追加できます。会場や料金をまとめた<b>公演情報</b>を入れておくと、ワンタップでコピーしてお客さまへの案内に使えます。</p></div>
+    <div class="guide-step"><div class="no">2</div><p><b>👥 お客さまを登録</b><br>お名前だけでOKです。相手の好みも入れたら上級者。会話の内容や差し入れは<b>メモ</b>に残しておくと、次に会うときの話題になります。</p></div>
+    <div class="guide-step"><div class="no">3</div><p><b>✓ 予約チェック</b><br>公演を開いてステージを選ぶと、お客さまリストが出ます。<b>○をタップするだけで予約1枚</b>。右のステータスで「案内済み→リマインド→予約→前日案内→お礼」まで、丁寧なフォローも管理できます。</p></div>
     <div class="guide-step"><div class="no">💡</div><p><b>案内を送るときは</b><br>まずは「出演が決まったので案内を送ってもいいですか？」と<b>ひとこと確認</b>してから送ると好印象です。グループ一斉送信ではなく、<b>個人チャットやDMでひとりずつ</b>送りましょう。声をかける順番に迷ったら、${GRP.A.icon}<b>「${GRP.A.label}」</b>の方から優先すると喜ばれます。</p></div>
     <div class="guide-step"><div class="no">💌</div><p><b>本番が終わったら</b><br>来てくださった方への<b>お礼のご挨拶</b>を忘れずに。アプリが「お礼の挨拶前」の方をお知らせします。この一手間が、次の来場につながります。</p></div>
     <p class="note">💾 データはこのスマホの中だけに保存されます。設定タブから定期的にバックアップの書き出しを。</p>
