@@ -377,9 +377,17 @@ function undoLastAction(){
     const p=DB.people.find(x=>x.id===a.personId);if(p)p.excluded=false;
   }else if(a.type==='exclude'){
     const p=DB.people.find(x=>x.id===a.personId);if(p)p.excluded=true;
+  }else if(a.type==='unexcludeShow'){
+    const p=DB.people.find(x=>x.id===a.personId);if(p)p.excludeShows=(p.excludeShows||[]).filter(id=>id!==a.showId);
+  }else if(a.type==='excludeShow'){
+    const p=DB.people.find(x=>x.id===a.personId);if(p){p.excludeShows=p.excludeShows||[];if(!p.excludeShows.includes(a.showId))p.excludeShows.push(a.showId);}
   }
   lastAction=null;
   saveData();render();toast('元に戻しました');
+}
+/* 対象外の判定:全体(p.excluded)か、この公演だけ(p.excludeShows)か */
+function isExcludedFor(p,showId){
+  return !!p.excluded||(!!showId&&(p.excludeShows||[]).includes(showId));
 }
 
 /* ================= 並び替え(ヨミガナ・グループ) ================= */
@@ -394,7 +402,7 @@ function toggleHideExcluded(){
   hideExcluded=!hideExcluded;
   render();
 }
-function sortPeople(list){
+function sortPeople(list,showId){
   const arr=[...list];
   if(sortMode==='group'){
     const ord={A:0,B:1,C:2,'':3};
@@ -403,12 +411,12 @@ function sortPeople(list){
     arr.sort((a,b)=>kanaKey(a).localeCompare(kanaKey(b),'ja'));
   }
   /* 対象外の方は常に最下部へ */
-  arr.sort((a,b)=>(a.excluded?1:0)-(b.excluded?1:0));
+  arr.sort((a,b)=>(isExcludedFor(a,showId)?1:0)-(isExcludedFor(b,showId)?1:0));
   return arr;
 }
 function kanaKey(p){return p.kana||p.name||'';}
-function sortBar(){
-  const excCount=DB.people.filter(p=>p.excluded).length;
+function sortBar(showId){
+  const excCount=DB.people.filter(p=>isExcludedFor(p,showId)).length;
   return `<div class="stage-scroller" style="padding-top:0">
     <button class="stage-chip ${sortMode==='kana'?'on':''}" onclick="setSortMode('kana')">あいうえお順</button>
     <button class="stage-chip ${sortMode==='group'?'on':''}" onclick="setSortMode('group')">グループ順</button>
@@ -607,8 +615,8 @@ function suggestMatches(s){
   if(!(s.stages||[]).some(x=>!isPast(x)))return [];
   const out=[];
   DB.people.forEach(p=>{
-    /* 対象外の方は提案しない */
-    if(p.excluded)return;
+    /* 対象外(全体・この公演)の方は提案しない */
+    if(isExcludedFor(p,s.id))return;
     /* この公演のどこかのステージに記録がある人は除外(すでに案内・予約済み) */
     if(DB.resv.some(r=>r.showId===s.id&&r.personId===p.id))return;
     /* NG情報に特徴が一致したら除外 */
@@ -630,25 +638,29 @@ function renderRoll(s){
   const past=isPast(stg);
   const rsAll=DB.resv.filter(r=>r.stageId===curStage);
   const inCount=rsAll.filter(isReserved).reduce((a,r)=>a+Number(r.count||0),0);
-  const people=sortPeople(DB.people)
+  const people=sortPeople(DB.people,s.id)
     .filter(p=>!qRoll||[p.name,p.kana].join(' ').toLowerCase().includes(qRoll.toLowerCase()))
-    .filter(p=>!hideExcluded||!p.excluded);
+    .filter(p=>!hideExcluded||!isExcludedFor(p,s.id));
   return `
     <div class="section-title">${past?'🌙':'☀️'} ${esc(stageName(stg))} のお客さま（${inCount}枚）
       <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="openStageForm('${s.id}','${stg.id}')">ステージを編集</button>
     </div>
     ${past?`<p class="note" style="margin:0 2px 10px">このステージは<b>本番後</b>です。お礼のご挨拶を送ったらステータスを更新しましょう💌</p>`:''}
-    ${sortBar()}
+    ${sortBar(s.id)}
     <div class="searchbar"><input placeholder="お名前で絞り込み" value="${esc(qRoll)}" oninput="qRoll=this.value;renderShowDetail()"></div>
     ${DB.people.length===0?`<div class="empty">${MASCOT}<span class="big">まだ顧客がいません</span>下のボタンから登録すると、ここに<br>お客さまリストとして並びます。</div>`
     :people.length===0?`<div class="empty">「${esc(qRoll)}」に一致する人はいません。</div>`
     :people.map(p=>{
       const r=DB.resv.find(x=>x.personId===p.id&&x.stageId===curStage);
-      if(p.excluded){
+      const globalExc=!!p.excluded;
+      const showExc=!globalExc&&(p.excludeShows||[]).includes(s.id);
+      if(globalExc||showExc){
+        const badgeLabel=globalExc?'対象外(全体)':'対象外(この公演)';
+        const badgeAction=globalExc?`confirmUnexclude('${p.id}')`:`confirmUnexcludeShow('${p.id}','${s.id}')`;
         return `<div class="roll-row excluded" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="${r?r.id:''}">
           <span class="check">📵</span>
           <button class="nm" onclick="openPerson('${p.id}')">${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}</button>
-          <button class="roll-badge bd-gray" onclick="confirmUnexclude('${p.id}')">対象外</button>
+          <button class="roll-badge bd-gray" onclick="${badgeAction}">${badgeLabel}</button>
         </div>`;
       }
       if(!r){
@@ -667,7 +679,7 @@ function renderRoll(s){
       </div>`;
     }).join('')}
     <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="openPersonForm()">👤 新しいお客さまを登録</button>
-    <p class="note">○をタップ＝予約1枚をワンタッチ登録。右のステータスをタップすると、案内前→案内済み→予約済み…と細かく管理できます（使わなくてもOK）。行を<b>右にスワイプで予約</b>、<b>左にスワイプで対象外</b>にもできます。お名前をタップで枚数などの詳細へ。</p>`;
+    <p class="note">○をタップ＝予約1枚をワンタッチ登録。右のステータスをタップすると、案内前→案内済み→予約済み…と細かく管理できます（使わなくてもOK）。行を<b>右にスワイプで予約</b>、<b>左にスワイプでこの公演だけ対象外</b>にもできます。お名前をタップで枚数などの詳細へ。</p>`;
 }
 function openStageForm(showId,stageId){
   const s=DB.shows.find(x=>x.id===showId);
@@ -732,8 +744,29 @@ function setExcluded(personId,value){
 }
 function confirmUnexclude(personId){
   const p=DB.people.find(x=>x.id===personId);if(!p)return;
-  if(!confirm(`${p.name}さんの「対象外」を解除しますか？`))return;
+  if(!confirm(`${p.name}さんの「対象外（全体）」を解除しますか？`))return;
   setExcluded(personId,false);
+}
+function excludeFromShow(personId,showId){
+  const p=DB.people.find(x=>x.id===personId);if(!p)return;
+  p.excludeShows=p.excludeShows||[];
+  if(!p.excludeShows.includes(showId))p.excludeShows.push(showId);
+  saveData();render();
+  lastAction={type:'unexcludeShow',personId,showId};
+  toastUndo(`${esc(p.name)}さんをこの公演だけ対象外にしました`);
+}
+function unexcludeFromShow(personId,showId){
+  const p=DB.people.find(x=>x.id===personId);if(!p)return;
+  p.excludeShows=(p.excludeShows||[]).filter(id=>id!==showId);
+  saveData();render();
+  lastAction={type:'excludeShow',personId,showId};
+  toastUndo(`${esc(p.name)}さんのこの公演への対象外を解除しました`);
+}
+function confirmUnexcludeShow(personId,showId){
+  const p=DB.people.find(x=>x.id===personId);if(!p)return;
+  const s=DB.shows.find(x=>x.id===showId);
+  if(!confirm(`${p.name}さんの「${s?s.name:'この公演'}」への対象外を解除しますか？`))return;
+  unexcludeFromShow(personId,showId);
 }
 
 /* ================= スワイプ操作(お客さまリスト) ================= */
@@ -741,10 +774,10 @@ function attachSwipeHandlers(containerSelector){
   const container=document.querySelector(containerSelector);
   if(!container||container.dataset.swipeAttached)return;
   container.dataset.swipeAttached='1';
-  let startX=0,startY=0,curRow=null,dragging=false,locked=null;
+  let startX=0,startY=0,curRow=null,dragging=false,locked=null,suppressUntil=0;
   const THRESH=68;
   container.addEventListener('touchstart',e=>{
-    const row=e.target.closest('.roll-row');
+    const row=e.target.closest('.roll-row, .person');
     if(!row||row.classList.contains('excluded'))return;
     curRow=row;startX=e.touches[0].clientX;startY=e.touches[0].clientY;dragging=true;locked=null;
     curRow.style.transition='none';
@@ -768,15 +801,20 @@ function attachSwipeHandlers(containerSelector){
     row.style.transform='translateX(0)';
     row.style.background='';
     curRow=null;
-    if(locked!=='x'){return;}
+    if(locked!=='x')return;
+    if(Math.abs(dx)>10)suppressUntil=Date.now()+350; /* この直後のタップ(クリック)は誤操作として無視 */
     const personId=row.dataset.person,showId=row.dataset.show,stageId=row.dataset.stage,resvId=row.dataset.resv;
     if(dx>THRESH){
-      if(!resvId)quickAdd(personId,showId,stageId);
-      else toast('すでに予約があります');
+      if(stageId&&!resvId)quickAdd(personId,showId,stageId);
+      else if(stageId)toast('すでに予約があります');
     }else if(dx<-THRESH){
-      setExcluded(personId,true);
+      if(showId)excludeFromShow(personId,showId); /* 公演の中からは、その公演だけ対象外 */
+      else setExcluded(personId,true); /* 顧客タブからは、全体を対象外 */
     }
   });
+  container.addEventListener('click',e=>{
+    if(Date.now()<suppressUntil){e.preventDefault();e.stopPropagation();}
+  },true);
 }
 function quickAdd(personId,showId,stageId){
   const id=uid();
@@ -816,7 +854,7 @@ function openStatusPicker(personId,showId,stageId,resvId){
     <div class="st-phase">🌙 本番後${past?'（いまはこちら）':''}</div>
     <div class="st-grid">${mkBtns(POST_KEYS.filter(k=>k!=='cancel'))}</div>
     <p class="note">「案内前〜リマインド済み」は予約枚数に数えません。「予約済み」以降が集計対象になります。</p>
-    <button class="btn btn-ghost" style="width:100%;margin-top:10px" onclick="closeModal();setExcluded('${personId}',true)">📵 この方を対象外にする（今後すべての公演で案内しない）</button>
+    <button class="btn btn-ghost" style="width:100%;margin-top:10px" onclick="closeModal();excludeFromShow('${personId}','${showId}')">📵 この公演では対象外にする（他の公演には案内できます）</button>
   `);
 }
 function setStatus(personId,showId,stageId,resvId,status){
@@ -910,6 +948,7 @@ function renderPeople(){
   <button class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:12px" onclick="openBulkForm()">📥 名前をまとめて登録</button>
   <div id="peopleList"></div>`;
   renderPeopleList();
+  attachSwipeHandlers('#view-people');
 }
 function timeAgo(dateStr){
   if(!dateStr)return'';
@@ -952,7 +991,7 @@ function renderPeopleList(){
   if(!people.length){inner.innerHTML=`<div class="empty">「${esc(q)}」に一致する人はいません。</div>`;return;}
   inner.innerHTML=people.map(p=>{
     const ps=personStats(p.id);
-    return `<button class="person ${p.excluded?'excluded':''}" onclick="openPerson('${p.id}')">
+    return `<button class="person ${p.excluded?'excluded':''}" data-person="${p.id}" onclick="openPerson('${p.id}')">
       <span class="avatar">${esc((p.name||'?').slice(0,1))}</span>
       <span class="info"><span class="nm">${esc(p.name)}${p.excluded?' <span class="gp-badge bd-gray">📵対象外</span>':p.group&&GRP[p.group]?` <span class="gp-badge ${GRP[p.group].cls}">${GRP[p.group].icon}${GRP[p.group].label}</span>`:''}</span><br><span class="sb">${esc(p.contact||'　')}</span><br><span class="sb" style="color:var(--kaki-deep)">📣 案内${ps.annai}回　🎫 来場${ps.visits}回${ps.lastDate?`　⏰ 前回 ${timeAgo(ps.lastDate)}`:''}</span></span>
     </button>`;
@@ -1091,8 +1130,8 @@ function openPersonForm(edit){
     <div class="gp-pick" id="gpPick">
       ${['A','B','C'].map(k=>`<button type="button" data-g="${k}" class="${p.group===k?'on':''}" onclick="gpPick(this)"><span style="font-size:17px">${GRP[k].icon}</span><span><span class="ttl">${k}：${GRP[k].label}</span><br><span class="ds">${GRP[k].desc}</span></span></button>`).join('')}
     </div>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:16px;font-size:14px;color:var(--ink)"><input type="checkbox" id="f_excluded" ${p.excluded?'checked':''} style="width:22px;height:22px;accent-color:var(--gray)"> 📵 この方は宣伝の対象外にする</label>
-    <p class="note" style="margin-top:4px">「絶対に観に来ない」など、案内の対象から外したい方に。顧客一覧やお客さまリストでグレーアウトして下の方にまとまります。</p>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:16px;font-size:14px;color:var(--ink)"><input type="checkbox" id="f_excluded" ${p.excluded?'checked':''} style="width:22px;height:22px;accent-color:var(--gray)"> 📵 この方を全公演で対象外にする</label>
+    <p class="note" style="margin-top:4px">「もう案内は一切もらいたくない」という方に。すべての公演の案内候補から外れ、顧客一覧やお客さまリストでグレーアウトして下の方にまとまります。特定の公演だけ対象外にしたい場合は、その公演のお客さまリストから設定してください。</p>
     <div class="actions">
       <button class="btn btn-ghost" onclick="closeModal()">やめる</button>
       <button class="btn btn-primary" onclick="savePerson('${edit||''}')">${edit?'保存する':'登録する'}</button>
@@ -1139,13 +1178,18 @@ function renderPersonDetail(){
       <button class="btn btn-ghost btn-sm" onclick="openPersonForm('${p.id}')">編集</button>
     </div>
     <div class="card">
-      ${p.excluded?`<div class="kv"><div class="k">📵 状態</div><div class="v"><span class="gp-badge bd-gray">対象外（宣伝しない）</span> <button class="btn btn-ghost btn-sm" style="margin-left:4px" onclick="setExcluded('${p.id}',false)">解除する</button></div></div>`:''}
+      ${p.excluded?`<div class="kv"><div class="k">📵 状態</div><div class="v"><span class="gp-badge bd-gray">対象外（全公演で案内しない）</span> <button class="btn btn-ghost btn-sm" style="margin-left:4px" onclick="setExcluded('${p.id}',false)">解除する</button></div></div>`:''}
       ${p.group&&GRP[p.group]?`<div class="kv"><div class="k">🤝 グループ</div><div class="v"><span class="gp-badge ${GRP[p.group].cls}">${GRP[p.group].icon} ${p.group}：${GRP[p.group].label}</span></div></div>`:''}
       ${p.kana?`<div class="kv"><div class="k">ヨミガナ</div><div class="v">${esc(p.kana)}</div></div>`:''}
       <div class="kv"><div class="k">📮 連絡方法</div><div class="v">${p.contact?esc(p.contact):'未登録'}</div></div>
       <div class="kv"><div class="k">🎫 来場</div><div class="v"><b>${visits.length}回</b>（累計 ${visits.reduce((a,r)=>a+Number(r.count||0),0)}枚）</div></div>
     </div>
-    ${p.excluded?'':`<button class="btn btn-ghost" style="width:100%;margin-bottom:4px" onclick="setExcluded('${p.id}',true)">📵 この方を対象外にする</button>`}
+    ${p.excluded?'':`<button class="btn btn-ghost" style="width:100%;margin-bottom:4px" onclick="setExcluded('${p.id}',true)">📵 この方を全公演で対象外にする</button>`}
+    ${(p.excludeShows||[]).length?`<div class="section-title">📵 対象外にしている公演</div>
+    <div class="card">${(p.excludeShows||[]).map(sid=>{
+      const sh=DB.shows.find(x=>x.id===sid);
+      return `<div class="kv"><div class="k" style="width:auto;flex:1">${esc(sh?sh.name:'（削除された公演）')}</div><div class="v" style="flex:0"><button class="btn btn-ghost btn-sm" onclick="confirmUnexcludeShow('${p.id}','${sid}')">解除</button></div></div>`;
+    }).join('')}</div>`:''}
     ${p.personal?`<div class="section-title">💡 好きなこと・習慣・経歴</div>
     <div class="card" style="background:#FFFDF8"><p style="font-size:14px;white-space:pre-wrap">${esc(p.personal)}</p></div>`:''}
     ${p.ng?`<div class="section-title">⚠️ 苦手なこと・NG</div>
