@@ -320,10 +320,24 @@ const isPast=st=>st.date&&st.date<today();
 /* ================= 画面遷移 ================= */
 let cur='shows', curShow=null, curStage=null, curPerson=null;
 function tab(t){
+  /* 詳細画面を開いたまま別タブに移った場合、積んだ履歴を静かに戻しておく */
+  if(curShow||curPerson){try{history.back();}catch(e){}}
   cur=t; curShow=null; curStage=null; curPerson=null;
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   render();
 }
+function closeShowDetail(fromPop){
+  curShow=null;render();
+  if(!fromPop){try{history.back();}catch(e){}}
+}
+function closePersonDetail(fromPop){
+  curPerson=null;render();
+  if(!fromPop){try{history.back();}catch(e){}}
+}
+window.addEventListener('popstate',()=>{
+  if(curShow)closeShowDetail(true);
+  else if(curPerson)closePersonDetail(true);
+});
 function render(){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   let id='view-'+cur;
@@ -473,6 +487,7 @@ function openShow(id){
   curShow=id;
   const s=DB.shows.find(x=>x.id===id);
   curStage=(s&&s.stages&&s.stages[0])?s.stages[0].id:null;
+  try{history.pushState({hanken:'showDetail'},'',location.href);}catch(e){}
   render();
 }
 
@@ -523,6 +538,7 @@ function delShow(id){
   DB.shows=DB.shows.filter(x=>x.id!==id);
   DB.resv=DB.resv.filter(r=>r.showId!==id);
   curShow=null;saveData();closeModal();render();toast('削除しました');
+  try{history.back();}catch(e){}
 }
 function copyInfo(showId){
   const s=DB.shows.find(x=>x.id===showId);
@@ -551,7 +567,7 @@ function renderShowDetail(){
   const el=document.getElementById('view-show-detail');
   el.innerHTML=`
     <div class="detail-head">
-      <button class="back" onclick="curShow=null;render()">‹ 戻る</button>
+      <button class="back" onclick="closeShowDetail()">‹ 戻る</button>
       <h2>${esc(s.name)}</h2>
       <button class="btn btn-ghost btn-sm" onclick="openShowForm('${s.id}')">編集</button>
     </div>
@@ -1054,7 +1070,11 @@ function dismissSimilar(cardId){
   const card=document.getElementById(cardId);
   if(card){card.innerHTML='<p style="font-size:13px;color:var(--sub)">別人として登録済みです。</p>';}
 }
-function openPerson(id){curPerson=id;render();}
+function openPerson(id){
+  curPerson=id;
+  try{history.pushState({hanken:'personDetail'},'',location.href);}catch(e){}
+  render();
+}
 function openPersonForm(edit){
   const p=edit?DB.people.find(x=>x.id===edit):{};
   openModal(`
@@ -1099,6 +1119,7 @@ function delPerson(id){
   DB.people=DB.people.filter(x=>x.id!==id);
   DB.resv=DB.resv.filter(r=>r.personId!==id);
   curPerson=null;saveData();closeModal();render();toast('削除しました');
+  try{history.back();}catch(e){}
 }
 function renderPersonDetail(){
   const p=DB.people.find(x=>x.id===curPerson);
@@ -1113,7 +1134,7 @@ function renderPersonDetail(){
   const el=document.getElementById('view-person-detail');
   el.innerHTML=`
     <div class="detail-head">
-      <button class="back" onclick="curPerson=null;render()">‹ 戻る</button>
+      <button class="back" onclick="closePersonDetail()">‹ 戻る</button>
       <h2>${esc(p.name)} さん</h2>
       <button class="btn btn-ghost btn-sm" onclick="openPersonForm('${p.id}')">編集</button>
     </div>
