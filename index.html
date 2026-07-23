@@ -98,7 +98,8 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .stage-chip.on{background:var(--kaki);border-color:var(--kaki);color:#fff}
 .stage-chip.add{border-style:dashed;color:var(--kaki-deep)}
 
-.roll-row{display:flex;align-items:center;gap:10px;background:var(--card);border:2px solid var(--line);border-radius:16px;padding:9px 11px;margin-bottom:8px}
+.roll-row{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:9px 11px;margin-bottom:8px}
+.rl-top{display:flex;align-items:center;gap:10px}
 .roll-row .check{width:34px;height:34px;border-radius:50%;border:2.5px dashed var(--line);flex-shrink:0;font-size:17px;color:#D8CFC2;display:flex;align-items:center;justify-content:center;background:#FCFAF6}
 .roll-row.in{border-color:var(--midori);background:var(--midori-soft)}
 .roll-row.in .check{border:2.5px solid var(--midori);background:var(--midori);color:#fff}
@@ -113,6 +114,17 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .bd-midori{border-color:var(--midori);color:#3F8A6C;background:#fff}
 .bd-kincha{border-color:var(--kincha);color:#B5872F;background:var(--kincha-soft)}
 .bd-red{border-color:#D98A8A;color:#B65A5A;background:#FAECEC}
+/* 名前の下に並ぶステータスチップ */
+.st-chips{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0 1px;padding-left:44px}
+.st-chips button{font-size:11px;font-weight:700;line-height:1.2;padding:6px 9px;border-radius:11px;border:1.5px solid var(--line);background:#FCFAF6;color:#A2988A;white-space:nowrap}
+.st-chips button.on{border-width:2px;padding:5.5px 8.5px;box-shadow:0 1px 0 rgba(0,0,0,.05)}
+.st-chips button.on.bd-gray{border-color:var(--gray);background:var(--gray-soft);color:#7A6F60}
+.st-chips button.on.bd-sora{border-color:var(--sora);background:var(--sora-soft);color:#3E6E9A}
+.st-chips button.on.bd-midori{border-color:var(--midori);background:var(--midori-soft);color:#347A5D}
+.st-chips button.on.bd-kincha{border-color:var(--kincha);background:var(--kincha-soft);color:#A87A22}
+.st-chips button.on.bd-red{border-color:#D98A8A;background:#FAECEC;color:#B65A5A}
+.st-chips button.exc{border-style:dashed;color:#B0A697}
+.roll-row .more{flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line);background:#fff;color:#B0A697;font-size:14px;font-weight:700;line-height:1}
 
 .person{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:9px;width:100%;text-align:left}
 .person.excluded{opacity:.5;filter:grayscale(60%)}
@@ -250,17 +262,32 @@ const GRP={
 
 /* ================= ステータス定義 ================= */
 const ST={
-  annai_mae:{label:'案内前',cls:'bd-gray',phase:'pre',reserved:false},
-  annai_zumi:{label:'案内済み',cls:'bd-sora',phase:'pre',reserved:false},
-  remind_zumi:{label:'リマインド済み',cls:'bd-sora',phase:'pre',reserved:false},
-  yoyaku_zumi:{label:'予約済み',cls:'bd-midori',phase:'pre',reserved:true},
-  zenjitsu_zumi:{label:'前日案内済み',cls:'bd-midori',phase:'pre',reserved:true},
-  cancel:{label:'キャンセル',cls:'bd-red',phase:'both',reserved:false},
-  orei_mae:{label:'お礼の挨拶前',cls:'bd-kincha',phase:'post',reserved:true},
-  orei_zumi:{label:'お礼送信済み',cls:'bd-midori',phase:'post',reserved:true}
+  annai_mae:{label:'案内前',short:'案内前',cls:'bd-gray',phase:'pre',reserved:false},
+  annai_zumi:{label:'案内済み',short:'案内済',cls:'bd-sora',phase:'pre',reserved:false},
+  remind_zumi:{label:'リマインド済み',short:'リマインド',cls:'bd-sora',phase:'pre',reserved:false},
+  yoyaku_zumi:{label:'予約済み',short:'予約',cls:'bd-midori',phase:'pre',reserved:true},
+  zenjitsu_zumi:{label:'前日案内済み',short:'前日案内',cls:'bd-midori',phase:'pre',reserved:true},
+  cancel:{label:'キャンセル',short:'キャンセル',cls:'bd-red',phase:'both',reserved:false},
+  orei_mae:{label:'お礼の挨拶前',short:'お礼前',cls:'bd-kincha',phase:'post',reserved:true},
+  orei_zumi:{label:'お礼送信済み',short:'お礼済',cls:'bd-midori',phase:'post',reserved:true}
 };
 const PRE_KEYS=['annai_mae','annai_zumi','remind_zumi','yoyaku_zumi','zenjitsu_zumi','cancel'];
 const POST_KEYS=['orei_mae','orei_zumi','cancel'];
+/* 行に直接並べるチップの並び（本番前／本番後） */
+const PRE_ROW=['annai_mae','annai_zumi','remind_zumi','yoyaku_zumi','zenjitsu_zumi','cancel'];
+const POST_ROW=['yoyaku_zumi','orei_mae','orei_zumi','cancel'];
+function chipKeys(past,cur){
+  const base=(past?POST_ROW:PRE_ROW).slice();
+  if(cur&&ST[cur]&&!base.includes(cur))base.unshift(cur);
+  return base;
+}
+/* ステータスチップを行に表示するか（端末に記憶） */
+let showChips=(()=>{try{return localStorage.getItem('hanken_chips')!=='0';}catch(e){return true;}})();
+function toggleChips(){
+  showChips=!showChips;
+  try{localStorage.setItem('hanken_chips',showChips?'1':'0');}catch(e){}
+  const y=window.scrollY;renderShowDetail();window.scrollTo(0,y);
+}
 const isReserved=r=>ST[r.status]?ST[r.status].reserved:false;
 
 /* ================= データ層 ================= */
@@ -415,11 +442,12 @@ function sortPeople(list,showId){
   return arr;
 }
 function kanaKey(p){return p.kana||p.name||'';}
-function sortBar(showId){
+function sortBar(showId,withChipToggle){
   const excCount=DB.people.filter(p=>isExcludedFor(p,showId)).length;
   return `<div class="stage-scroller" style="padding-top:0">
     <button class="stage-chip ${sortMode==='kana'?'on':''}" onclick="setSortMode('kana')">あいうえお順</button>
     <button class="stage-chip ${sortMode==='group'?'on':''}" onclick="setSortMode('group')">グループ順</button>
+    ${withChipToggle?`<button class="stage-chip ${showChips?'on':''}" onclick="toggleChips()">🏷 ステータス${showChips?'表示中':'を表示'}</button>`:''}
     ${excCount?`<button class="stage-chip ${hideExcluded?'on':''}" onclick="toggleHideExcluded()">📵 対象外を${hideExcluded?'表示':'非表示'}（${excCount}人）</button>`:''}
   </div>`;
 }
@@ -646,7 +674,7 @@ function renderRoll(s){
       <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="openStageForm('${s.id}','${stg.id}')">ステージを編集</button>
     </div>
     ${past?`<p class="note" style="margin:0 2px 10px">このステージは<b>本番後</b>です。お礼のご挨拶を送ったらステータスを更新しましょう💌</p>`:''}
-    ${sortBar(s.id)}
+    ${sortBar(s.id,true)}
     <div class="searchbar"><input placeholder="お名前で絞り込み" value="${esc(qRoll)}" oninput="qRoll=this.value;renderShowDetail()"></div>
     ${DB.people.length===0?`<div class="empty">${MASCOT}<span class="big">まだ顧客がいません</span>下のボタンから登録すると、ここに<br>お客さまリストとして並びます。</div>`
     :people.length===0?`<div class="empty">「${esc(qRoll)}」に一致する人はいません。</div>`
@@ -658,28 +686,43 @@ function renderRoll(s){
         const badgeLabel=globalExc?'対象外(全体)':'対象外(この公演)';
         const badgeAction=globalExc?`confirmUnexclude('${p.id}')`:`confirmUnexcludeShow('${p.id}','${s.id}')`;
         return `<div class="roll-row excluded" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="${r?r.id:''}">
-          <span class="check">📵</span>
-          <button class="nm" onclick="openPerson('${p.id}')">${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}</button>
-          <button class="roll-badge bd-gray" onclick="${badgeAction}">${badgeLabel}</button>
+          <div class="rl-top">
+            <span class="check">📵</span>
+            <button class="nm" onclick="openPerson('${p.id}')">${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}</button>
+            <button class="roll-badge bd-gray" onclick="${badgeAction}">${badgeLabel}</button>
+          </div>
         </div>`;
       }
+      const curSt=r?r.status:'annai_mae';
+      const stDef=ST[curSt];
+      const resvId=r?r.id:'';
+      const excChip=`<button class="exc" onclick="toggleExcludeInline('${p.id}','${s.id}')">📵 対象外</button>`;
+      const chips=showChips?`<div class="st-chips">${chipKeys(past,curSt).map(k=>
+          `<button class="${k===curSt?'on '+ST[k].cls:''}" onclick="setStatusInline('${p.id}','${s.id}','${curStage}','${resvId}','${k}')">${k===curSt?'✓':''}${ST[k].short}</button>`
+        ).join('')}${excChip}</div>`:'';
+      const tail=showChips
+        ? `<button class="more" onclick="openStatusPicker('${p.id}','${s.id}','${curStage}','${resvId}')" aria-label="詳しい設定">⋯</button>`
+        : `<button class="roll-badge ${stDef.cls}" onclick="openStatusPicker('${p.id}','${s.id}','${curStage}','${resvId}')">${stDef.label}</button>`;
       if(!r){
         return `<div class="roll-row" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="">
-          <button class="check" onclick="quickAdd('${p.id}','${s.id}','${curStage}')" aria-label="予約を入れる">＋</button>
-          <button class="nm" onclick="quickAdd('${p.id}','${s.id}','${curStage}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}</button>
-          <button class="roll-badge bd-gray" onclick="openStatusPicker('${p.id}','${s.id}','${curStage}')">案内前</button>
+          <div class="rl-top">
+            <button class="check" onclick="quickAdd('${p.id}','${s.id}','${curStage}')" aria-label="予約を入れる">＋</button>
+            <button class="nm" onclick="quickAdd('${p.id}','${s.id}','${curStage}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}</button>
+            ${tail}
+          </div>${chips}
         </div>`;
       }
-      const stDef=ST[r.status];
       const extra=[isReserved(r)?`${r.count}枚`:'',r.seat?esc(r.seat):'',r.paid?'￥':''].filter(Boolean).join('・');
       return `<div class="roll-row ${isReserved(r)?'in':''} ${r.status==='cancel'?'cn':''}" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="${r.id}">
-        <button class="check" onclick="checkTap('${r.id}')" aria-label="予約の切り替え">${isReserved(r)?'✓':'＋'}</button>
-        <button class="nm" onclick="openResvEdit('${r.id}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}${extra?`<small>${extra}</small>`:''}</button>
-        <button class="roll-badge ${stDef.cls}" onclick="openStatusPicker('${p.id}','${s.id}','${curStage}','${r.id}')">${stDef.label}</button>
+        <div class="rl-top">
+          <button class="check" onclick="checkTap('${r.id}')" aria-label="予約の切り替え">${isReserved(r)?'✓':'＋'}</button>
+          <button class="nm" onclick="openResvEdit('${r.id}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}${extra?`<small>${extra}</small>`:''}</button>
+          ${tail}
+        </div>${chips}
       </div>`;
     }).join('')}
     <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="openPersonForm()">👤 新しいお客さまを登録</button>
-    <p class="note">○をタップ＝予約1枚をワンタッチ登録。右のステータスをタップすると、案内前→案内済み→予約済み…と細かく管理できます（使わなくてもOK）。行を<b>右にスワイプで予約</b>、<b>左にスワイプでこの公演だけ対象外</b>にもできます。お名前をタップで枚数などの詳細へ。</p>`;
+    <p class="note">○をタップ＝予約1枚をワンタッチ登録。お名前の下のステータスは<b>タップするだけでその場で切り替わります</b>（使わなくてもOK。上の「🏷 ステータス」で非表示にもできます）。<b>⋯</b>から本番前・本番後のすべてのステータスと対象外設定へ。行を<b>右にスワイプで予約</b>、<b>左にスワイプでこの公演だけ対象外</b>。お名前をタップで枚数などの詳細へ。</p>`;
 }
 function openStageForm(showId,stageId){
   const s=DB.shows.find(x=>x.id===showId);
@@ -767,6 +810,22 @@ function confirmUnexcludeShow(personId,showId){
   const s=DB.shows.find(x=>x.id===showId);
   if(!confirm(`${p.name}さんの「${s?s.name:'この公演'}」への対象外を解除しますか？`))return;
   unexcludeFromShow(personId,showId);
+}
+/* リストのチップから対象外を切り替える（スクロール位置を保つ） */
+function toggleExcludeInline(personId,showId){
+  const p=DB.people.find(x=>x.id===personId);if(!p)return;
+  p.excludeShows=p.excludeShows||[];
+  const y=window.scrollY;
+  const already=p.excludeShows.includes(showId);
+  if(already){
+    p.excludeShows=p.excludeShows.filter(id=>id!==showId);
+    saveData();renderShowDetail();window.scrollTo(0,y);
+    toast(`${esc(p.name)}さんの対象外を解除しました`);
+  }else{
+    p.excludeShows.push(showId);
+    saveData();renderShowDetail();window.scrollTo(0,y);
+    toast(`${esc(p.name)}さんをこの公演だけ対象外にしました`);
+  }
 }
 
 /* ================= スワイプ操作(お客さまリスト) ================= */
@@ -857,20 +916,35 @@ function openStatusPicker(personId,showId,stageId,resvId){
     <button class="btn btn-ghost" style="width:100%;margin-top:10px" onclick="closeModal();excludeFromShow('${personId}','${showId}')">📵 この公演では対象外にする（他の公演には案内できます）</button>
   `);
 }
-function setStatus(personId,showId,stageId,resvId,status){
+/* ステータス更新の本体。変更が起きたらtrueを返す */
+function applyStatus(personId,showId,stageId,resvId,status){
   let r=resvId?DB.resv.find(x=>x.id===resvId):null;
+  if(!r)r=DB.resv.find(x=>x.personId===personId&&x.stageId===stageId)||null;
   if(!r){
-    if(status==='annai_mae'){closeModal();return;}
+    if(status==='annai_mae')return false;
     r={id:uid(),showId,stageId,personId,count:1,status,paid:false,note:'',seat:''};
     DB.resv.push(r);
   }else if(status==='annai_mae'&&r.count<=1&&!r.paid&&!r.note){
     /* 案内前に戻す=レコード削除でスッキリ */
     DB.resv=DB.resv.filter(x=>x.id!==r.id);
-    saveData();closeModal();render();return;
   }else{
+    if(r.status===status)return false;
     r.status=status;
   }
-  saveData();closeModal();render();toast(`「${ST[status].label}」にしました`);
+  saveData();return true;
+}
+function setStatus(personId,showId,stageId,resvId,status){
+  const changed=applyStatus(personId,showId,stageId,resvId,status);
+  closeModal();render();
+  if(changed)toast(`「${ST[status].label}」にしました`);
+}
+/* リストの行から直接切り替え（モーダルを開かず、スクロール位置も保つ） */
+function setStatusInline(personId,showId,stageId,resvId,status){
+  const changed=applyStatus(personId,showId,stageId,resvId,status);
+  const y=window.scrollY;
+  renderShowDetail();
+  window.scrollTo(0,y);
+  if(changed)toast(`「${ST[status].label}」にしました`);
 }
 function openResvEdit(id){
   const r=DB.resv.find(x=>x.id===id);if(!r)return;
@@ -1382,7 +1456,7 @@ function openGuide(){
     <p class="sub" style="text-align:center;margin-bottom:16px">3ステップで、あなたの営業がラクになります</p>
     <div class="guide-step"><div class="no">1</div><p><b>📅 公演を登録</b><br>公演名と単価、集客目標を登録。上演回（ステージ）は「10/12 昼」「10/12 19:00」のように何回でも追加できます。会場や料金をまとめた<b>公演情報</b>を入れておくと、ワンタップでコピーしてお客さまへの案内に使えます。</p></div>
     <div class="guide-step"><div class="no">2</div><p><b>👥 お客さまを登録</b><br>お名前だけでOKです。相手の好みも入れたら上級者。会話の内容や差し入れは<b>メモ</b>に残しておくと、次に会うときの話題になります。</p></div>
-    <div class="guide-step"><div class="no">3</div><p><b>✓ 予約チェック</b><br>公演を開いてステージを選ぶと、お客さまリストが出ます。<b>○をタップするだけで予約1枚</b>。右のステータスで「案内済み→リマインド→予約→前日案内→お礼」まで、丁寧なフォローも管理できます。</p></div>
+    <div class="guide-step"><div class="no">3</div><p><b>✓ 予約チェック</b><br>公演を開いてステージを選ぶと、お客さまリストが出ます。<b>○をタップするだけで予約1枚</b>。お名前の下に並ぶステータスは、<b>タップするだけでその場で切り替わります</b>。「案内済み→リマインド→予約→前日案内→お礼」まで、丁寧なフォローが習慣になります。</p></div>
     <div class="guide-step"><div class="no">💡</div><p><b>案内を送るときは</b><br>まずは「出演が決まったので案内を送ってもいいですか？」と<b>ひとこと確認</b>してから送ると好印象です。グループ一斉送信ではなく、<b>個人チャットやDMでひとりずつ</b>送りましょう。声をかける順番に迷ったら、${GRP.A.icon}<b>「${GRP.A.label}」</b>の方から優先すると喜ばれます。</p></div>
     <div class="guide-step"><div class="no">💌</div><p><b>本番が終わったら</b><br>来てくださった方への<b>お礼のご挨拶</b>を忘れずに。アプリが「お礼の挨拶前」の方をお知らせします。この一手間が、次の来場につながります。</p></div>
     <p class="note">💾 データはこのスマホの中だけに保存されます。設定タブから定期的にバックアップの書き出しを。</p>
