@@ -28,6 +28,8 @@
   --kincha-soft:#F8EDD5;
   --gray:#B4A99B;
   --gray-soft:#F3EEE6;
+  --sumire:#9C87AC;
+  --sumire-soft:#F1EBF5;
   --ink:#4A4238;
   --sub:#9A8F82;
   --line:#EFE5D8;
@@ -114,6 +116,7 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .bd-midori{border-color:var(--midori);color:#3F8A6C;background:#fff}
 .bd-kincha{border-color:var(--kincha);color:#B5872F;background:var(--kincha-soft)}
 .bd-red{border-color:#D98A8A;color:#B65A5A;background:#FAECEC}
+.bd-sumire{border-color:var(--sumire);color:#7C6690;background:var(--sumire-soft)}
 /* 名前の下に並ぶステータスチップ */
 .st-chips{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0 1px;padding-left:44px}
 .st-chips button{font-size:11px;font-weight:700;line-height:1.2;padding:6px 9px;border-radius:11px;border:1.5px solid var(--line);background:#FCFAF6;color:#A2988A;white-space:nowrap}
@@ -123,6 +126,7 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .st-chips button.on.bd-midori{border-color:var(--midori);background:var(--midori-soft);color:#347A5D}
 .st-chips button.on.bd-kincha{border-color:var(--kincha);background:var(--kincha-soft);color:#A87A22}
 .st-chips button.on.bd-red{border-color:#D98A8A;background:#FAECEC;color:#B65A5A}
+.st-chips button.on.bd-sumire{border-color:var(--sumire);background:var(--sumire-soft);color:#7C6690}
 .st-chips button.exc{border-style:dashed;color:#B0A697}
 .roll-row .more{flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line);background:#fff;color:#B0A697;font-size:14px;font-weight:700;line-height:1}
 
@@ -265,22 +269,36 @@ const ST={
   annai_mae:{label:'案内前',short:'案内前',cls:'bd-gray',phase:'pre',reserved:false},
   annai_zumi:{label:'案内済み',short:'案内済',cls:'bd-sora',phase:'pre',reserved:false},
   remind_zumi:{label:'リマインド済み',short:'リマインド',cls:'bd-sora',phase:'pre',reserved:false},
+  kotowari:{label:'今回はお断り',short:'お断り',cls:'bd-sumire',phase:'pre',reserved:false},
   yoyaku_zumi:{label:'予約済み',short:'予約',cls:'bd-midori',phase:'pre',reserved:true},
   zenjitsu_zumi:{label:'前日案内済み',short:'前日案内',cls:'bd-midori',phase:'pre',reserved:true},
   cancel:{label:'キャンセル',short:'キャンセル',cls:'bd-red',phase:'both',reserved:false},
   orei_mae:{label:'お礼の挨拶前',short:'お礼前',cls:'bd-kincha',phase:'post',reserved:true},
   orei_zumi:{label:'お礼送信済み',short:'お礼済',cls:'bd-midori',phase:'post',reserved:true}
 };
-const PRE_KEYS=['annai_mae','annai_zumi','remind_zumi','yoyaku_zumi','zenjitsu_zumi','cancel'];
+const PRE_KEYS=['annai_mae','annai_zumi','remind_zumi','kotowari','yoyaku_zumi','zenjitsu_zumi','cancel'];
 const POST_KEYS=['orei_mae','orei_zumi','cancel'];
 /* 行に直接並べるチップの並び（本番前／本番後） */
-const PRE_ROW=['annai_mae','annai_zumi','remind_zumi','yoyaku_zumi','zenjitsu_zumi','cancel'];
+const PRE_ROW=['annai_mae','annai_zumi','remind_zumi','kotowari','yoyaku_zumi','zenjitsu_zumi','cancel'];
 const POST_ROW=['yoyaku_zumi','orei_mae','orei_zumi','cancel'];
 function chipKeys(past,cur){
   const base=(past?POST_ROW:PRE_ROW).slice();
   if(cur&&ST[cur]&&!base.includes(cur))base.unshift(cur);
   return base;
 }
+/* ================= スワイプでのステータス遷移ルール =================
+   right: 右スワイプで進む先のステータスキー
+   left : 左スワイプで進む先のステータスキー（'__exclude'はこの公演だけ対象外）
+   指定のない方向はスワイプしても何も起きない（トーストで案内） */
+const SWIPE_RULES={
+  annai_mae:{right:'annai_zumi',left:'__exclude'},
+  annai_zumi:{right:'yoyaku_zumi',left:'kotowari'},
+  remind_zumi:{right:'yoyaku_zumi',left:'kotowari'},
+  kotowari:{right:'yoyaku_zumi',left:'__exclude'},
+  yoyaku_zumi:{right:'zenjitsu_zumi',left:'cancel'},
+  zenjitsu_zumi:{left:'cancel'},
+  cancel:{right:'yoyaku_zumi',left:'__exclude'}
+};
 /* ステータスチップを行に表示するか（端末に記憶） */
 let showChips=(()=>{try{return localStorage.getItem('hanken_chips')!=='0';}catch(e){return true;}})();
 function toggleChips(){
@@ -417,7 +435,7 @@ function isExcludedFor(p,showId){
   return !!p.excluded||(!!showId&&(p.excludeShows||[]).includes(showId));
 }
 
-/* ================= 並び替え(ヨミガナ・グループ) ================= */
+/* ================= 並び替え(ヨミガナ・グループ・ステータス) ================= */
 let sortMode=(()=>{try{return localStorage.getItem('hanken_sort')||'kana';}catch(e){return 'kana';}})();
 let hideExcluded=false;
 function setSortMode(m){
@@ -429,9 +447,19 @@ function toggleHideExcluded(){
   hideExcluded=!hideExcluded;
   render();
 }
+/* ステータス順で使う並び。案内前に近いほど上、お断り・キャンセルは対応不要なので下 */
+const STATUS_ORDER=['annai_mae','annai_zumi','remind_zumi','yoyaku_zumi','zenjitsu_zumi','orei_mae','orei_zumi','kotowari','cancel'];
+function statusOrderIndex(p,stageId){
+  const r=DB.resv.find(x=>x.personId===p.id&&x.stageId===stageId);
+  const st=r?r.status:'annai_mae';
+  const i=STATUS_ORDER.indexOf(st);
+  return i===-1?STATUS_ORDER.length:i;
+}
 function sortPeople(list,showId){
   const arr=[...list];
-  if(sortMode==='group'){
+  if(sortMode==='status'&&showId&&curStage){
+    arr.sort((a,b)=>statusOrderIndex(a,curStage)-statusOrderIndex(b,curStage)||kanaKey(a).localeCompare(kanaKey(b),'ja'));
+  }else if(sortMode==='group'){
     const ord={A:0,B:1,C:2,'':3};
     arr.sort((a,b)=>(ord[a.group||'']??3)-(ord[b.group||'']??3)||kanaKey(a).localeCompare(kanaKey(b),'ja'));
   }else{
@@ -447,6 +475,7 @@ function sortBar(showId,withChipToggle){
   return `<div class="stage-scroller" style="padding-top:0">
     <button class="stage-chip ${sortMode==='kana'?'on':''}" onclick="setSortMode('kana')">あいうえお順</button>
     <button class="stage-chip ${sortMode==='group'?'on':''}" onclick="setSortMode('group')">グループ順</button>
+    ${showId?`<button class="stage-chip ${sortMode==='status'?'on':''}" onclick="setSortMode('status')">ステータス順</button>`:''}
     ${withChipToggle?`<button class="stage-chip ${showChips?'on':''}" onclick="toggleChips()">🏷 ステータス${showChips?'表示中':'を表示'}</button>`:''}
     ${excCount?`<button class="stage-chip ${hideExcluded?'on':''}" onclick="toggleHideExcluded()">📵 対象外を${hideExcluded?'表示':'非表示'}（${excCount}人）</button>`:''}
   </div>`;
@@ -685,7 +714,7 @@ function renderRoll(s){
       if(globalExc||showExc){
         const badgeLabel=globalExc?'対象外(全体)':'対象外(この公演)';
         const badgeAction=globalExc?`confirmUnexclude('${p.id}')`:`confirmUnexcludeShow('${p.id}','${s.id}')`;
-        return `<div class="roll-row excluded" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="${r?r.id:''}">
+        return `<div class="roll-row excluded" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="${r?r.id:''}" data-status="${r?r.status:'annai_mae'}">
           <div class="rl-top">
             <span class="check">📵</span>
             <button class="nm" onclick="openPerson('${p.id}')">${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}</button>
@@ -704,7 +733,7 @@ function renderRoll(s){
         ? `<button class="more" onclick="openStatusPicker('${p.id}','${s.id}','${curStage}','${resvId}')" aria-label="詳しい設定">⋯</button>`
         : `<button class="roll-badge ${stDef.cls}" onclick="openStatusPicker('${p.id}','${s.id}','${curStage}','${resvId}')">${stDef.label}</button>`;
       if(!r){
-        return `<div class="roll-row" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="">
+        return `<div class="roll-row" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="" data-status="annai_mae">
           <div class="rl-top">
             <button class="check" onclick="quickAdd('${p.id}','${s.id}','${curStage}')" aria-label="予約を入れる">＋</button>
             <button class="nm" onclick="quickAdd('${p.id}','${s.id}','${curStage}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}</button>
@@ -713,7 +742,7 @@ function renderRoll(s){
         </div>`;
       }
       const extra=[isReserved(r)?`${r.count}枚`:'',r.seat?esc(r.seat):'',r.paid?'￥':''].filter(Boolean).join('・');
-      return `<div class="roll-row ${isReserved(r)?'in':''} ${r.status==='cancel'?'cn':''}" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="${r.id}">
+      return `<div class="roll-row ${isReserved(r)?'in':''} ${['cancel','kotowari'].includes(r.status)?'cn':''}" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="${r.id}" data-status="${r.status}">
         <div class="rl-top">
           <button class="check" onclick="checkTap('${r.id}')" aria-label="予約の切り替え">${isReserved(r)?'✓':'＋'}</button>
           <button class="nm" onclick="openResvEdit('${r.id}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}${extra?`<small>${extra}</small>`:''}</button>
@@ -722,7 +751,7 @@ function renderRoll(s){
       </div>`;
     }).join('')}
     <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="openPersonForm()">👤 新しいお客さまを登録</button>
-    <p class="note">○をタップ＝予約1枚をワンタッチ登録。お名前の下のステータスは<b>タップするだけでその場で切り替わります</b>（使わなくてもOK。上の「🏷 ステータス」で非表示にもできます）。<b>⋯</b>から本番前・本番後のすべてのステータスと対象外設定へ。行を<b>右にスワイプで予約</b>、<b>左にスワイプでこの公演だけ対象外</b>。お名前をタップで枚数などの詳細へ。</p>`;
+    <p class="note">○をタップ＝予約1枚をワンタッチ登録。お名前の下のステータスは<b>タップするだけでその場で切り替わります</b>（使わなくてもOK。上の「🏷 ステータス」で非表示にもできます）。<b>⋯</b>から本番前・本番後のすべてのステータスと対象外設定へ。行の<b>左右スワイプ</b>でも、いまのステータスに応じて次の段階に進めます（例：案内済み→右で予約済み、左で今回はお断り）。お名前をタップで枚数などの詳細へ。</p>`;
 }
 function openStageForm(showId,stageId){
   const s=DB.shows.find(x=>x.id===showId);
@@ -863,12 +892,26 @@ function attachSwipeHandlers(containerSelector){
     if(locked!=='x')return;
     if(Math.abs(dx)>10)suppressUntil=Date.now()+350; /* この直後のタップ(クリック)は誤操作として無視 */
     const personId=row.dataset.person,showId=row.dataset.show,stageId=row.dataset.stage,resvId=row.dataset.resv;
+    const status=row.dataset.status||'annai_mae';
+    const rule=SWIPE_RULES[status]||{};
     if(dx>THRESH){
-      if(stageId&&!resvId)quickAdd(personId,showId,stageId);
-      else if(stageId)toast('すでに予約があります');
+      if(rule.right){
+        setStatusInline(personId,showId,stageId,resvId,rule.right);
+      }else if(stageId&&!resvId){
+        quickAdd(personId,showId,stageId);
+      }else if(stageId){
+        toast('これ以上進める操作はありません。⋯から変更できます');
+      }
     }else if(dx<-THRESH){
-      if(showId)excludeFromShow(personId,showId); /* 公演の中からは、その公演だけ対象外 */
-      else setExcluded(personId,true); /* 顧客タブからは、全体を対象外 */
+      if(rule.left==='__exclude'){
+        if(showId)toggleExcludeInline(personId,showId);
+      }else if(rule.left){
+        setStatusInline(personId,showId,stageId,resvId,rule.left);
+      }else if(showId){
+        toggleExcludeInline(personId,showId); /* 公演の中からは、その公演だけ対象外 */
+      }else{
+        setExcluded(personId,true); /* 顧客タブからは、全体を対象外 */
+      }
     }
   });
   container.addEventListener('click',e=>{
@@ -1456,8 +1499,9 @@ function openGuide(){
     <p class="sub" style="text-align:center;margin-bottom:16px">3ステップで、あなたの営業がラクになります</p>
     <div class="guide-step"><div class="no">1</div><p><b>📅 公演を登録</b><br>公演名と単価、集客目標を登録。上演回（ステージ）は「10/12 昼」「10/12 19:00」のように何回でも追加できます。会場や料金をまとめた<b>公演情報</b>を入れておくと、ワンタップでコピーしてお客さまへの案内に使えます。</p></div>
     <div class="guide-step"><div class="no">2</div><p><b>👥 お客さまを登録</b><br>お名前だけでOKです。相手の好みも入れたら上級者。会話の内容や差し入れは<b>メモ</b>に残しておくと、次に会うときの話題になります。</p></div>
-    <div class="guide-step"><div class="no">3</div><p><b>✓ 予約チェック</b><br>公演を開いてステージを選ぶと、お客さまリストが出ます。<b>○をタップするだけで予約1枚</b>。お名前の下に並ぶステータスは、<b>タップするだけでその場で切り替わります</b>。「案内済み→リマインド→予約→前日案内→お礼」まで、丁寧なフォローが習慣になります。</p></div>
+    <div class="guide-step"><div class="no">3</div><p><b>✓ 予約チェック</b><br>公演を開いてステージを選ぶと、お客さまリストが出ます。<b>○をタップするだけで予約1枚</b>。お名前の下に並ぶステータスのチップは<b>タップした瞬間に切り替わります</b>。「案内済み→リマインド→予約済み→前日案内→お礼」まで、丁寧なフォローが習慣になります。行を<b>左右にスワイプ</b>すれば、いまの状態に応じて次に進めます（例：案内済みは右で予約済み、左で今回はお断り）。並び替えの「ステータス順」を使うと、対応が必要な人が自然と上に来ます。</p></div>
     <div class="guide-step"><div class="no">💡</div><p><b>案内を送るときは</b><br>まずは「出演が決まったので案内を送ってもいいですか？」と<b>ひとこと確認</b>してから送ると好印象です。グループ一斉送信ではなく、<b>個人チャットやDMでひとりずつ</b>送りましょう。声をかける順番に迷ったら、${GRP.A.icon}<b>「${GRP.A.label}」</b>の方から優先すると喜ばれます。</p></div>
+    <div class="guide-step"><div class="no">🙏</div><p><b>断られても、キャンセルされても</b><br>「今回はお断り」「キャンセル」も立派な記録です。無理に誘わなくてよい合図として、そのまま残しておきましょう。気が変わったら<b>右にスワイプで「予約済み」</b>にすぐ戻せます。今回だけ声をかけない方は<b>「📵 対象外」</b>チップでその公演だけスキップできます。</p></div>
     <div class="guide-step"><div class="no">💌</div><p><b>本番が終わったら</b><br>来てくださった方への<b>お礼のご挨拶</b>を忘れずに。アプリが「お礼の挨拶前」の方をお知らせします。この一手間が、次の来場につながります。</p></div>
     <p class="note">💾 データはこのスマホの中だけに保存されます。設定タブから定期的にバックアップの書き出しを。</p>
     <p class="note" style="text-align:right;margin-top:6px">produced by ミサキカク</p>
