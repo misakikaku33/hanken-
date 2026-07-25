@@ -110,6 +110,9 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .roll-row{touch-action:pan-y;position:relative}
 .roll-row .nm{flex:1;font-weight:700;font-size:14.5px;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .roll-row .nm small{display:block;font-weight:400;font-size:11px;color:var(--sub)}
+.roll-row .cnt{flex-shrink:0;background:var(--midori-soft);border:2px solid var(--midori);color:#347A5D;border-radius:11px;padding:4px 9px;font-size:11.5px;font-weight:700;line-height:1.15;white-space:nowrap}
+.roll-row .cnt b{font-size:17px;margin-right:1px}
+.roll-row.cn .cnt{background:var(--gray-soft);border-color:var(--line);color:var(--sub)}
 .roll-badge{flex-shrink:0;font-size:11.5px;font-weight:700;padding:7px 10px;border-radius:14px;border:2px solid var(--line);background:#fff;color:var(--sub);max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bd-gray{border-color:var(--gray);color:#8A7F70;background:var(--gray-soft)}
 .bd-sora{border-color:var(--sora);color:#4A7AA6;background:var(--sora-soft)}
@@ -297,7 +300,7 @@ const SWIPE_RULES={
   kotowari:{right:'yoyaku_zumi',left:'__exclude'},
   yoyaku_zumi:{right:'zenjitsu_zumi',left:'cancel'},
   zenjitsu_zumi:{left:'cancel'},
-  cancel:{right:'yoyaku_zumi',left:'__exclude'}
+  cancel:{right:'yoyaku_zumi'},
 };
 /* ステータスチップを行に表示するか（端末に記憶） */
 let showChips=(()=>{try{return localStorage.getItem('hanken_chips')!=='0';}catch(e){return true;}})();
@@ -741,17 +744,19 @@ function renderRoll(s){
           </div>${chips}
         </div>`;
       }
-      const extra=[isReserved(r)?`${r.count}枚`:'',r.seat?esc(r.seat):'',r.paid?'￥':''].filter(Boolean).join('・');
+      const sub=[r.seat?esc(r.seat):'',r.paid?'入金済み':''].filter(Boolean).join('・');
+      const cntBadge=isReserved(r)?`<button class="cnt" onclick="openResvEdit('${r.id}')" aria-label="枚数を変更"><b>${r.count}</b>枚</button>`:'';
       return `<div class="roll-row ${isReserved(r)?'in':''} ${['cancel','kotowari'].includes(r.status)?'cn':''}" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="${r.id}" data-status="${r.status}">
         <div class="rl-top">
           <button class="check" onclick="checkTap('${r.id}')" aria-label="予約の切り替え">${isReserved(r)?'✓':'＋'}</button>
-          <button class="nm" onclick="openResvEdit('${r.id}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}${extra?`<small>${extra}</small>`:''}</button>
+          <button class="nm" onclick="openResvEdit('${r.id}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}${sub?`<small>${sub}</small>`:''}</button>
+          ${cntBadge}
           ${tail}
         </div>${chips}
       </div>`;
     }).join('')}
     <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="openPersonForm()">👤 新しいお客さまを登録</button>
-    <p class="note">○をタップ＝予約1枚をワンタッチ登録。お名前の下のステータスは<b>タップするだけでその場で切り替わります</b>（使わなくてもOK。上の「🏷 ステータス」で非表示にもできます）。<b>⋯</b>から本番前・本番後のすべてのステータスと対象外設定へ。行の<b>左右スワイプ</b>でも、いまのステータスに応じて次の段階に進めます（例：案内済み→右で予約済み、左で今回はお断り）。お名前をタップで枚数などの詳細へ。</p>`;
+    <p class="note">○をタップ＝予約1枚をワンタッチ登録。<b>お名前の右の枚数</b>をタップすると枚数や座席を変更できます。お名前の下のステータスは<b>タップするだけでその場で切り替わります</b>（使わなくてもOK。上の「🏷 ステータス」で非表示にもできます）。<b>⋯</b>から本番前・本番後のすべてのステータスと対象外設定へ。行の<b>左右スワイプ</b>でも、いまのステータスに応じて次の段階に進めます（例：案内済み→右で予約済み、左で今回はお断り）。</p>`;
 }
 function openStageForm(showId,stageId){
   const s=DB.shows.find(x=>x.id===showId);
@@ -893,20 +898,24 @@ function attachSwipeHandlers(containerSelector){
     if(Math.abs(dx)>10)suppressUntil=Date.now()+350; /* この直後のタップ(クリック)は誤操作として無視 */
     const personId=row.dataset.person,showId=row.dataset.show,stageId=row.dataset.stage,resvId=row.dataset.resv;
     const status=row.dataset.status||'annai_mae';
-    const rule=SWIPE_RULES[status]||{};
+    const rule=SWIPE_RULES[status]||null;
     if(dx>THRESH){
-      if(rule.right){
+      if(rule&&rule.right){
         setStatusInline(personId,showId,stageId,resvId,rule.right);
+      }else if(rule){
+        toast('この状態では右スワイプの操作はありません');
       }else if(stageId&&!resvId){
         quickAdd(personId,showId,stageId);
       }else if(stageId){
         toast('これ以上進める操作はありません。⋯から変更できます');
       }
     }else if(dx<-THRESH){
-      if(rule.left==='__exclude'){
+      if(rule&&rule.left==='__exclude'){
         if(showId)toggleExcludeInline(personId,showId);
-      }else if(rule.left){
+      }else if(rule&&rule.left){
         setStatusInline(personId,showId,stageId,resvId,rule.left);
+      }else if(rule){
+        toast('この状態では左スワイプの操作はありません。⋯から変更できます');
       }else if(showId){
         toggleExcludeInline(personId,showId); /* 公演の中からは、その公演だけ対象外 */
       }else{
