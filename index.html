@@ -12,35 +12,115 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="半券">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@400;500&family=Zen+Maru+Gothic:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
+  /* ---- テーマで差し替わる「地」の色 ---- */
   --bg:#FDF7EE;
   --card:#FFFFFF;
-  --kaki:#E8785A;
-  --kaki-deep:#D5603F;
-  --kaki-soft:#FBE9E2;
-  --midori:#5FA487;
-  --midori-soft:#E5F2EC;
-  --sora:#6D9BC3;
-  --sora-soft:#E8F0F7;
-  --kincha:#D9A441;
-  --kincha-soft:#F8EDD5;
-  --gray:#B4A99B;
-  --gray-soft:#F3EEE6;
-  --sumire:#9C87AC;
-  --sumire-soft:#F1EBF5;
+  --card-soft:#FCFAF6;
   --ink:#4A4238;
   --sub:#9A8F82;
   --line:#EFE5D8;
+  --kaki:#E8785A;
+  --kaki-deep:#D5603F;
+  --kaki-soft:#FBE9E2;
+  /* ---- ステータスの色（意味を保つため全テーマ共通の色相） ---- */
+  --midori:#5FA487;
+  --midori-soft:#E5F2EC;
+  --midori-ink:#347A5D;
+  --sora:#6D9BC3;
+  --sora-soft:#E8F0F7;
+  --sora-ink:#3E6E9A;
+  --kincha:#D9A441;
+  --kincha-soft:#F8EDD5;
+  --kincha-ink:#A87A22;
+  --gray:#B4A99B;
+  --gray-soft:#F3EEE6;
+  --gray-ink:#7A6F60;
+  --sumire:#9C87AC;
+  --sumire-soft:#F1EBF5;
+  --sumire-ink:#7C6690;
+  --red:#D98A8A;
+  --red-soft:#FAECEC;
+  --red-ink:#B65A5A;
+  --paper:#FFFDF8;
+  --paper-ink:#B5872F;
+  --toast-bg:#4A4238;
+  --toast-ink:#FFFFFF;
   --radius:18px;
   --maru:'Zen Maru Gothic',sans-serif;
   --kiwi:'Kiwi Maru',serif;
 }
+
+/* ===== テーマ2：夜の劇場（ダーク） ===== */
+[data-theme="yoru"]{
+  --bg:#1E1B24;
+  --card:#2A2632;
+  --card-soft:#332E3C;
+  --ink:#EDE6DC;
+  --sub:#9C93A6;
+  --line:#413B4D;
+  --kaki:#E8785A;
+  --kaki-deep:#C4523A;
+  --kaki-soft:#3A2A2C;
+  --midori-soft:#26382F;
+  --midori-ink:#8FCBAF;
+  --sora-soft:#25313D;
+  --sora-ink:#9CC3E4;
+  --kincha-soft:#3B3222;
+  --kincha-ink:#E5BE6B;
+  --gray-soft:#333039;
+  --gray-ink:#B0A69C;
+  --sumire-soft:#332B3B;
+  --sumire-ink:#C4AED4;
+  --red-soft:#3B2A2C;
+  --red-ink:#E59A9A;
+  --paper:#332B21;
+  --paper-ink:#E5BE6B;
+  --toast-bg:#4E4657;
+  --toast-ink:#F5EFE6;
+  --maru:'Zen Kaku Gothic New',sans-serif;
+  --kiwi:'Shippori Mincho',serif;
+}
+
+/* ===== テーマ3：和紙（明朝・落ち着いた生成り） ===== */
+[data-theme="washi"]{
+  --bg:#F5F1E6;
+  --card:#FFFDF7;
+  --card-soft:#F7F3E9;
+  --ink:#3D3A33;
+  --sub:#8C8474;
+  --line:#E2DACA;
+  --kaki:#B5654A;
+  --kaki-deep:#98503A;
+  --kaki-soft:#F0E2DA;
+  --paper:#FBF7EC;
+  --toast-bg:#3D3A33;
+  --maru:'Shippori Mincho',serif;
+  --kiwi:'Shippori Mincho',serif;
+}
+
+/* ===== テーマ4：藍（涼やかな青） ===== */
+[data-theme="ai"]{
+  --bg:#F2F5F8;
+  --card:#FFFFFF;
+  --card-soft:#F7FAFC;
+  --ink:#2E3A45;
+  --sub:#7E8B99;
+  --line:#DDE5EC;
+  --kaki:#3D6E96;
+  --kaki-deep:#2C5677;
+  --kaki-soft:#E1EBF3;
+  --paper:#FBFDFE;
+  --toast-bg:#2E3A45;
+  --maru:'Zen Kaku Gothic New',sans-serif;
+  --kiwi:'Zen Kaku Gothic New',sans-serif;
+}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:var(--maru);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.65}
 button{font-family:var(--maru);cursor:pointer;border:none;background:none;color:inherit}
-input,select,textarea{font-family:var(--maru);font-size:16px;width:100%;padding:11px 14px;border:2px solid var(--line);border-radius:14px;background:#fff;color:var(--ink)}
+input,select,textarea{font-family:var(--maru);font-size:16px;width:100%;padding:11px 14px;border:2px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink)}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--kaki)}
 label{display:block;font-size:12.5px;font-weight:700;color:var(--sub);margin:14px 0 5px;letter-spacing:.03em}
 
@@ -50,7 +130,7 @@ header h1 .tkt{display:inline-block;transform:rotate(-8deg);margin-right:6px}
 header .tagline{font-size:11px;color:var(--sub);letter-spacing:.06em}
 
 nav{display:flex;gap:6px;padding:10px 14px;position:sticky;top:0;z-index:50;background:var(--bg)}
-nav button{flex:1;padding:9px 0;font-size:12.5px;font-weight:700;color:var(--sub);border-radius:14px;background:#fff;border:2px solid var(--line)}
+nav button{flex:1;padding:9px 0;font-size:12.5px;font-weight:700;color:var(--sub);border-radius:14px;background:var(--card);border:2px solid var(--line)}
 nav button .ic{display:block;font-size:17px;line-height:1.2}
 nav button.on{color:#fff;background:var(--kaki);border-color:var(--kaki)}
 
@@ -66,13 +146,13 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:13px 18px;border-radius:16px;font-weight:700;font-size:14.5px}
 .btn-primary{background:var(--kaki);color:#fff;width:100%;box-shadow:0 3px 0 var(--kaki-deep)}
 .btn-primary:active{transform:translateY(2px);box-shadow:0 1px 0 var(--kaki-deep)}
-.btn-ghost{border:2px solid var(--line);color:var(--ink);background:#fff}
+.btn-ghost{border:2px solid var(--line);color:var(--ink);background:var(--card)}
 .btn-danger{color:var(--kaki-deep);font-size:13px;padding:8px}
 .btn-sm{padding:8px 14px;font-size:13px;border-radius:12px}
 .fab{position:fixed;right:18px;bottom:calc(22px + env(safe-area-inset-bottom));height:52px;padding:0 20px 0 18px;border-radius:26px;background:var(--kaki);color:#fff;font-size:14px;font-weight:700;box-shadow:0 4px 0 var(--kaki-deep),0 6px 16px rgba(213,96,63,.3);z-index:40;line-height:1;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .fab .plus{font-size:20px;line-height:1}
 .fab:active{transform:translateY(3px);box-shadow:0 1px 0 var(--kaki-deep)}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));background:var(--ink);color:#fff;font-size:13.5px;font-weight:700;padding:10px 22px;border-radius:24px;z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90vw;text-align:center}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));background:var(--toast-bg);color:var(--toast-ink);font-size:13.5px;font-weight:700;padding:10px 22px;border-radius:24px;z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;max-width:90vw;text-align:center}
 .toast.on{opacity:1;pointer-events:auto}
 
 .show-card{width:100%;text-align:left;background:var(--card);border:2px solid var(--line);border-radius:var(--radius);padding:15px 16px;margin-bottom:12px;position:relative}
@@ -88,53 +168,68 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .show-stats{display:flex;gap:14px;margin-top:9px;font-size:12px;color:var(--sub);flex-wrap:wrap}
 .show-stats b{color:var(--ink);font-size:13.5px}
 
-.info-box{background:#FFFDF8;border:2px solid var(--kincha-soft);border-radius:16px;padding:12px 14px;margin-bottom:12px}
+.info-box{background:var(--paper);border:2px solid var(--kincha-soft);border-radius:16px;padding:12px 14px;margin-bottom:12px}
 .info-box .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
-.info-box .head b{font-size:13px;color:#B5872F}
+.info-box .head b{font-size:13px;color:var(--paper-ink)}
 .info-box pre{font-family:var(--maru);font-size:13px;white-space:pre-wrap;word-break:break-all;color:var(--ink)}
-.copy-btn{background:var(--kincha);color:#fff;font-size:12px;font-weight:700;padding:7px 14px;border-radius:12px;box-shadow:0 2px 0 #B5872F;flex-shrink:0}
+.copy-btn{background:var(--kincha);color:#fff;font-size:12px;font-weight:700;padding:7px 14px;border-radius:12px;box-shadow:0 2px 0 var(--kincha-ink);flex-shrink:0}
 .copy-btn:active{transform:translateY(2px);box-shadow:none}
 
 .stage-scroller{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;-webkit-overflow-scrolling:touch}
-.stage-chip{flex-shrink:0;padding:8px 15px;border-radius:20px;border:2px solid var(--line);background:#fff;font-size:13px;font-weight:700;color:var(--sub);white-space:nowrap}
+.stage-chip{flex-shrink:0;padding:8px 15px;border-radius:20px;border:2px solid var(--line);background:var(--card);font-size:13px;font-weight:700;color:var(--sub);white-space:nowrap}
 .stage-chip.on{background:var(--kaki);border-color:var(--kaki);color:#fff}
 .stage-chip.add{border-style:dashed;color:var(--kaki-deep)}
 
 .roll-row{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:9px 11px;margin-bottom:8px}
 .rl-top{display:flex;align-items:center;gap:10px}
-.roll-row .check{width:34px;height:34px;border-radius:50%;border:2.5px dashed var(--line);flex-shrink:0;font-size:17px;color:#D8CFC2;display:flex;align-items:center;justify-content:center;background:#FCFAF6}
+.roll-row .check{width:34px;height:34px;border-radius:50%;border:2.5px dashed var(--line);flex-shrink:0;font-size:17px;color:var(--sub);display:flex;align-items:center;justify-content:center;background:var(--card-soft)}
 .roll-row.in{border-color:var(--midori);background:var(--midori-soft)}
 .roll-row.in .check{border:2.5px solid var(--midori);background:var(--midori);color:#fff}
-.roll-row.cn{opacity:.55}
+/* 案内済み・リマインド済み：外枠を空色にして進捗が一目でわかるように */
+.roll-row.sent{border-color:var(--sora);background:var(--sora-soft)}
+.roll-row.sent .check{border:2.5px dashed var(--sora);color:var(--sora)}
+/* お断り・キャンセル：行全体を薄くせず、お名前まわりだけ控えめにする
+   （チップは通常どおり表示して、次の操作をしやすく保つ） */
+.roll-row.cn{background:var(--card);border-color:var(--line)}
+.roll-row.cn .rl-top{opacity:.5}
+.roll-row.cn .nm{text-decoration:line-through;text-decoration-color:var(--sub);text-decoration-thickness:1.5px}
 .roll-row.excluded{opacity:.45;filter:grayscale(70%)}
 .roll-row{touch-action:pan-y;position:relative}
 .roll-row .nm{flex:1;font-weight:700;font-size:14.5px;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .roll-row .nm small{display:block;font-weight:400;font-size:11px;color:var(--sub)}
-.roll-row .cnt{flex-shrink:0;background:var(--midori-soft);border:2px solid var(--midori);color:#347A5D;border-radius:11px;padding:4px 9px;font-size:11.5px;font-weight:700;line-height:1.15;white-space:nowrap}
+.roll-row .cnt{flex-shrink:0;background:var(--midori-soft);border:2px solid var(--midori);color:var(--midori-ink);border-radius:11px;padding:4px 9px;font-size:11.5px;font-weight:700;line-height:1.15;white-space:nowrap}
 .roll-row .cnt b{font-size:17px;margin-right:1px}
 .roll-row.cn .cnt{background:var(--gray-soft);border-color:var(--line);color:var(--sub)}
-.roll-badge{flex-shrink:0;font-size:11.5px;font-weight:700;padding:7px 10px;border-radius:14px;border:2px solid var(--line);background:#fff;color:var(--sub);max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bd-gray{border-color:var(--gray);color:#8A7F70;background:var(--gray-soft)}
-.bd-sora{border-color:var(--sora);color:#4A7AA6;background:var(--sora-soft)}
-.bd-midori{border-color:var(--midori);color:#3F8A6C;background:#fff}
-.bd-kincha{border-color:var(--kincha);color:#B5872F;background:var(--kincha-soft)}
-.bd-red{border-color:#D98A8A;color:#B65A5A;background:#FAECEC}
-.bd-sumire{border-color:var(--sumire);color:#7C6690;background:var(--sumire-soft)}
+.roll-badge{flex-shrink:0;font-size:11.5px;font-weight:700;padding:7px 10px;border-radius:14px;border:2px solid var(--line);background:var(--card);color:var(--sub);max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bd-gray{border-color:var(--gray);color:var(--gray-ink);background:var(--gray-soft)}
+.bd-sora{border-color:var(--sora);color:var(--sora-ink);background:var(--sora-soft)}
+.bd-midori{border-color:var(--midori);color:var(--midori-ink);background:var(--midori-soft)}
+.bd-kincha{border-color:var(--kincha);color:var(--kincha-ink);background:var(--kincha-soft)}
+.bd-red{border-color:var(--red);color:var(--red-ink);background:var(--red-soft)}
+.bd-sumire{border-color:var(--sumire);color:var(--sumire-ink);background:var(--sumire-soft)}
 /* 名前の下に並ぶステータスチップ */
 .st-chips{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0 1px;padding-left:44px}
-.st-chips button{font-size:11px;font-weight:700;line-height:1.2;padding:6px 9px;border-radius:11px;border:1.5px solid var(--line);background:#FCFAF6;color:#A2988A;white-space:nowrap}
+.st-chips button{font-size:11px;font-weight:700;line-height:1.2;padding:6px 9px;border-radius:11px;border:1.5px solid var(--line);background:var(--card-soft);color:var(--sub);white-space:nowrap}
 .st-chips button.on{border-width:2px;padding:5.5px 8.5px;box-shadow:0 1px 0 rgba(0,0,0,.05)}
-.st-chips button.on.bd-gray{border-color:var(--gray);background:var(--gray-soft);color:#7A6F60}
-.st-chips button.on.bd-sora{border-color:var(--sora);background:var(--sora-soft);color:#3E6E9A}
-.st-chips button.on.bd-midori{border-color:var(--midori);background:var(--midori-soft);color:#347A5D}
-.st-chips button.on.bd-kincha{border-color:var(--kincha);background:var(--kincha-soft);color:#A87A22}
-.st-chips button.on.bd-red{border-color:#D98A8A;background:#FAECEC;color:#B65A5A}
-.st-chips button.on.bd-sumire{border-color:var(--sumire);background:var(--sumire-soft);color:#7C6690}
-.st-chips button.exc{border-style:dashed;color:#B0A697}
-.roll-row .more{flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line);background:#fff;color:#B0A697;font-size:14px;font-weight:700;line-height:1}
+.st-chips button.on.bd-gray{border-color:var(--gray);background:var(--gray-soft);color:var(--gray-ink)}
+.st-chips button.on.bd-sora{border-color:var(--sora);background:var(--sora-soft);color:var(--sora-ink)}
+.st-chips button.on.bd-midori{border-color:var(--midori);background:var(--midori-soft);color:var(--midori-ink)}
+.st-chips button.on.bd-kincha{border-color:var(--kincha);background:var(--kincha-soft);color:var(--kincha-ink)}
+/* お断り・キャンセルは「そこで止まっている」状態なので、選択中は塗りつぶしではっきり示す */
+.st-chips button.on.bd-red{border-color:var(--red-ink);background:var(--red-ink);color:#fff}
+.st-chips button.on.bd-sumire{border-color:var(--sumire-ink);background:var(--sumire-ink);color:#fff}
+.st-chips button.exc{border-style:dashed;color:var(--sub)}
+/* テーマ選択 */
+.theme-pick{display:flex;flex-direction:column;gap:9px;margin-top:13px}
+.theme-pick button{display:flex;align-items:center;gap:12px;text-align:left;padding:11px 13px;border-radius:15px;border:2px solid var(--line);background:var(--card);width:100%}
+.theme-pick button.on{border-color:var(--kaki);background:var(--kaki-soft)}
+.theme-pick .sw{display:flex;flex-shrink:0;border-radius:9px;overflow:hidden;border:1.5px solid var(--line)}
+.theme-pick .sw i{width:16px;height:34px;display:block}
+.theme-pick .tx b{font-size:14px;display:block;color:var(--ink)}
+.theme-pick .tx small{font-size:11.5px;color:var(--sub);line-height:1.45;display:block;margin-top:2px}
+.roll-row .more{flex-shrink:0;width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);color:var(--sub);font-size:14px;font-weight:700;line-height:1}
 
-.person{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:9px;width:100%;text-align:left}
-.person.excluded{opacity:.5;filter:grayscale(60%)}
+.person{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:9px;width:100%;text-align:left}.person.excluded{opacity:.5;filter:grayscale(60%)}
 .person .avatar{width:44px;height:44px;border-radius:50%;background:var(--kincha-soft);color:var(--kaki-deep);display:flex;align-items:center;justify-content:center;font-family:var(--kiwi);font-size:18px;flex-shrink:0;border:2px solid var(--kincha)}
 .person .info{flex:1;min-width:0}
 .person .nm{font-weight:700;font-size:15px}
@@ -151,7 +246,7 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .kv:last-child{border-bottom:none}
 .kv .k{width:84px;flex-shrink:0;color:var(--sub);font-size:12.5px;font-weight:700;padding-top:1px}
 .kv .v{flex:1;word-break:break-all}
-.memo-item{border:2px solid var(--kincha-soft);border-left:5px solid var(--kincha);padding:9px 12px;margin-bottom:9px;background:#FFFDF8;border-radius:12px}
+.memo-item{border:2px solid var(--kincha-soft);border-left:5px solid var(--kincha);padding:9px 12px;margin-bottom:9px;background:var(--paper);border-radius:12px}
 .memo-item .d{font-size:11px;color:var(--sub);font-weight:700}
 .memo-item p{font-size:14px;white-space:pre-wrap}
 .history-item{display:flex;justify-content:space-between;gap:8px;padding:9px 2px;border-bottom:1.5px dashed var(--line);font-size:13.5px}
@@ -177,7 +272,7 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .modal .sub{font-size:12.5px;color:var(--sub)}
 .modal .actions{display:flex;gap:10px;margin-top:20px}
 .modal .actions .btn{flex:1}
-.seg{display:flex;border:2px solid var(--line);border-radius:14px;overflow:hidden;margin-top:5px;background:#fff}
+.seg{display:flex;border:2px solid var(--line);border-radius:14px;overflow:hidden;margin-top:5px;background:var(--card)}
 .seg button{flex:1;padding:10px 0;font-size:13px;font-weight:700;color:var(--sub)}
 .seg button.on{background:var(--kaki);color:#fff}
 .row2{display:flex;gap:10px}
@@ -185,7 +280,7 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .note{font-size:12px;color:var(--sub);margin-top:8px;line-height:1.6}
 
 .st-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-.st-grid button{padding:9px 14px;border-radius:14px;border:2px solid var(--line);background:#fff;font-size:13px;font-weight:700;color:var(--sub)}
+.st-grid button{padding:9px 14px;border-radius:14px;border:2px solid var(--line);background:var(--card);font-size:13px;font-weight:700;color:var(--sub)}
 .st-grid button.on{border-color:var(--kaki);background:var(--kaki-soft);color:var(--kaki-deep)}
 .st-phase{font-size:11.5px;font-weight:700;color:var(--sub);margin:12px 0 2px}
 
@@ -194,7 +289,7 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .gp-b{background:var(--midori-soft);color:#3F8A6C;border:1.5px solid var(--midori)}
 .gp-c{background:var(--sora-soft);color:#4A7AA6;border:1.5px solid var(--sora)}
 .gp-pick{display:flex;flex-direction:column;gap:8px;margin-top:6px}
-.gp-pick button{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 13px;border-radius:14px;border:2px solid var(--line);background:#fff}
+.gp-pick button{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 13px;border-radius:14px;border:2px solid var(--line);background:var(--card)}
 .gp-pick button.on{border-color:var(--kaki);background:var(--kaki-soft)}
 .gp-pick .ttl{font-size:13.5px;font-weight:700}
 .gp-pick .ds{font-size:11px;color:var(--sub)}
@@ -202,7 +297,7 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .suggest-box{background:var(--sora-soft);border:2px solid var(--sora);border-radius:16px;padding:12px 14px;margin-bottom:12px}
 .suggest-box .head{font-size:13px;font-weight:700;color:#4A7AA6;margin-bottom:6px}
 .suggest-box .who{display:flex;flex-wrap:wrap;gap:7px}
-.suggest-box .who button{background:#fff;border:2px solid var(--sora);border-radius:14px;padding:6px 12px;font-size:12.5px;font-weight:700;color:#4A7AA6}
+.suggest-box .who button{background:var(--card);border:2px solid var(--sora);border-radius:14px;padding:6px 12px;font-size:12.5px;font-weight:700;color:var(--sora-ink)}
 .suggest-box .why{font-size:11px;color:var(--sub);margin-top:6px}
 
 .guide-step{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start}
@@ -746,7 +841,12 @@ function renderRoll(s){
       }
       const sub=[r.seat?esc(r.seat):'',r.paid?'入金済み':''].filter(Boolean).join('・');
       const cntBadge=isReserved(r)?`<button class="cnt" onclick="openResvEdit('${r.id}')" aria-label="枚数を変更"><b>${r.count}</b>枚</button>`:'';
-      return `<div class="roll-row ${isReserved(r)?'in':''} ${['cancel','kotowari'].includes(r.status)?'cn':''}" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="${r.id}" data-status="${r.status}">
+      const rowCls=[
+        isReserved(r)?'in':'',
+        ['annai_zumi','remind_zumi'].includes(r.status)?'sent':'',
+        ['cancel','kotowari'].includes(r.status)?'cn':''
+      ].filter(Boolean).join(' ');
+      return `<div class="roll-row ${rowCls}" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="${r.id}" data-status="${r.status}">
         <div class="rl-top">
           <button class="check" onclick="checkTap('${r.id}')" aria-label="予約の切り替え">${isReserved(r)?'✓':'＋'}</button>
           <button class="nm" onclick="openResvEdit('${r.id}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}${sub?`<small>${sub}</small>`:''}</button>
@@ -1444,6 +1544,17 @@ function addToHome(){
 /* ================= 設定 ================= */
 function renderSettings(){
   document.getElementById('view-settings').innerHTML=`
+    <div class="section-title">🎨 見た目を選ぶ</div>
+    <div class="card">
+      <p style="font-size:13.5px">お好みの見た目に変えられます。予約状況を表す色（緑・赤など）の意味は、どれを選んでも変わりません。</p>
+      <div class="theme-pick">
+        ${Object.keys(THEMES).map(k=>`
+          <button class="${k===theme?'on':''}" onclick="setTheme('${k}')">
+            <span class="sw">${THEMES[k].bar.map(c=>`<i style="background:${c}"></i>`).join('')}</span>
+            <span class="tx"><b>${THEMES[k].name}${k===theme?' ✓':''}</b><small>${THEMES[k].desc}</small></span>
+          </button>`).join('')}
+      </div>
+    </div>
     <div class="section-title">📲 ホーム画面に追加</div>
     <div class="card">
       <p style="font-size:13.5px">ホーム画面に追加すると、アプリのようにワンタップで開けます。</p>
@@ -1511,6 +1622,7 @@ function openGuide(){
     <div class="guide-step"><div class="no">3</div><p><b>✓ 予約チェック</b><br>公演を開いてステージを選ぶと、お客さまリストが出ます。<b>○をタップするだけで予約1枚</b>。お名前の下に並ぶステータスのチップは<b>タップした瞬間に切り替わります</b>。「案内済み→リマインド→予約済み→前日案内→お礼」まで、丁寧なフォローが習慣になります。行を<b>左右にスワイプ</b>すれば、いまの状態に応じて次に進めます（例：案内済みは右で予約済み、左で今回はお断り）。並び替えの「ステータス順」を使うと、対応が必要な人が自然と上に来ます。</p></div>
     <div class="guide-step"><div class="no">💡</div><p><b>案内を送るときは</b><br>まずは「出演が決まったので案内を送ってもいいですか？」と<b>ひとこと確認</b>してから送ると好印象です。グループ一斉送信ではなく、<b>個人チャットやDMでひとりずつ</b>送りましょう。声をかける順番に迷ったら、${GRP.A.icon}<b>「${GRP.A.label}」</b>の方から優先すると喜ばれます。</p></div>
     <div class="guide-step"><div class="no">🙏</div><p><b>断られても、キャンセルされても</b><br>「今回はお断り」「キャンセル」も立派な記録です。無理に誘わなくてよい合図として、そのまま残しておきましょう。気が変わったら<b>右にスワイプで「予約済み」</b>にすぐ戻せます。今回だけ声をかけない方は<b>「📵 対象外」</b>チップでその公演だけスキップできます。</p></div>
+    <div class="guide-step"><div class="no">🎨</div><p><b>見た目を変えられます</b><br>設定タブの<b>「見た目を選ぶ」</b>から、木漏れ日・夜の劇場・和紙・藍の4種類に切り替えられます。暗い楽屋や客席で開くときは<b>「夜の劇場」</b>が目にやさしいです。予約状況を表す色の意味は、どれを選んでも変わりません。</p></div>
     <div class="guide-step"><div class="no">💌</div><p><b>本番が終わったら</b><br>来てくださった方への<b>お礼のご挨拶</b>を忘れずに。アプリが「お礼の挨拶前」の方をお知らせします。この一手間が、次の来場につながります。</p></div>
     <p class="note">💾 データはこのスマホの中だけに保存されます。設定タブから定期的にバックアップの書き出しを。</p>
     <p class="note" style="text-align:right;margin-top:6px">produced by ミサキカク</p>
@@ -1531,6 +1643,30 @@ function openModal(html){
 }
 function closeModal(){document.getElementById('modalBg').classList.remove('on');}
 const v=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+
+/* ================= テーマ（見た目の切り替え） ================= */
+const THEMES={
+  komorebi:{name:'木漏れ日',desc:'やわらかな生成りと柿色。半券のきほんの見た目です。',bar:['#FDF7EE','#E8785A','#5FA487'],meta:'#FDF7EE'},
+  yoru:{name:'夜の劇場',desc:'目にやさしい暗い画面。楽屋や客席で開くときに。',bar:['#1E1B24','#E8785A','#8FCBAF'],meta:'#1E1B24'},
+  washi:{name:'和紙',desc:'明朝体の落ち着いた雰囲気。読み物のような佇まい。',bar:['#F5F1E6','#B5654A','#8C8474'],meta:'#F5F1E6'},
+  ai:{name:'藍',desc:'涼やかな青で、すっきり整った印象に。',bar:['#F2F5F8','#3D6E96','#7E8B99'],meta:'#F2F5F8'}
+};
+let theme=(()=>{try{return localStorage.getItem('hanken_theme')||'komorebi';}catch(e){return 'komorebi';}})();
+function applyTheme(t){
+  if(!THEMES[t])t='komorebi';
+  theme=t;
+  if(t==='komorebi')document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme',t);
+  const m=document.querySelector('meta[name="theme-color"]');
+  if(m)m.setAttribute('content',THEMES[t].meta);
+  try{localStorage.setItem('hanken_theme',t);}catch(e){}
+}
+function setTheme(t){
+  applyTheme(t);
+  renderSettings();
+  toast(`「${THEMES[t].name}」にしました`);
+}
+applyTheme(theme);
 
 /* ================= 起動 ================= */
 render();
