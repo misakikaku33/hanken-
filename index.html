@@ -1575,6 +1575,10 @@ function addToHome(){
 /* ================= 設定 ================= */
 function renderSettings(){
   document.getElementById('view-settings').innerHTML=`
+    <div class="section-title">📖 使い方</div>
+    <div class="card">
+      <button class="btn btn-primary" style="width:100%" onclick="openGuide()">📖 使い方ガイドを見る</button>
+    </div>
     <div class="section-title">🎨 見た目を選ぶ</div>
     <div class="card">
       <p style="font-size:13.5px">お好みの見た目に変えられます。予約状況を表す色（緑・赤など）の意味は、どれを選んでも変わりません。</p>
@@ -1590,10 +1594,6 @@ function renderSettings(){
     <div class="card">
       <p style="font-size:13.5px">ホーム画面に追加すると、アプリのようにワンタップで開けます。</p>
       <button class="btn btn-primary" style="margin-top:12px" onclick="addToHome()">📲 ホーム画面に追加する</button>
-    </div>
-    <div class="section-title">📖 使い方</div>
-    <div class="card">
-      <button class="btn btn-ghost" style="width:100%" onclick="openGuide()">使い方ガイドを見る</button>
     </div>
     <div class="section-title">💾 バックアップ</div>
     <div class="card">
