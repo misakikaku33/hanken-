@@ -240,6 +240,8 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .roll-row.in .check{border:2.5px solid var(--midori);background:var(--midori);color:#fff}
 /* 案内済み・リマインド済み：外枠を空色にして進捗が一目でわかるように */
 .roll-row.sent{border-color:var(--sora);background:var(--sora-soft)}
+.roll-row.other{border-color:var(--midori);border-style:dashed;background:var(--card)}
+.roll-row.other .check{border:2.5px dashed var(--midori);color:var(--midori)}
 .roll-row.sent .check{border:2.5px dashed var(--sora);color:var(--sora)}
 /* お断り・キャンセル：行全体を薄くせず、お名前まわりだけ控えめにする
    （チップは通常どおり表示して、次の操作をしやすく保つ） */
@@ -260,6 +262,7 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 .bd-kincha{border-color:var(--kincha);color:var(--kincha-ink);background:var(--kincha-soft)}
 .bd-red{border-color:var(--red);color:var(--red-ink);background:var(--red-soft)}
 .bd-sumire{border-color:var(--sumire);color:var(--sumire-ink);background:var(--sumire-soft)}
+.bd-teal{border-color:var(--midori);color:var(--midori-ink);background:var(--midori-soft);border-style:dashed}
 /* 名前の下に並ぶステータスチップ */
 .st-chips{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0 1px;padding-left:44px}
 .st-chips button{font-size:11px;font-weight:700;line-height:1.2;padding:6px 9px;border-radius:11px;border:1.5px solid var(--line);background:var(--card-soft);color:var(--sub);white-space:nowrap}
@@ -271,6 +274,7 @@ main{padding:12px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;
 /* お断り・キャンセルは「そこで止まっている」状態なので、選択中は塗りつぶしではっきり示す */
 .st-chips button.on.bd-red{border-color:var(--red-ink);background:var(--red-ink);color:#fff}
 .st-chips button.on.bd-sumire{border-color:var(--sumire-ink);background:var(--sumire-ink);color:#fff}
+.st-chips button.on.bd-teal{border-color:var(--midori);background:var(--midori-soft);color:var(--midori-ink);border-style:dashed}
 .st-chips button.exc{border-style:dashed;color:var(--sub)}
 /* テーマ選択 */
 .theme-pick{display:flex;flex-direction:column;gap:9px;margin-top:13px}
@@ -427,12 +431,17 @@ const ST={
   annai_zumi:{label:'案内済み',short:'案内済',cls:'bd-sora',phase:'pre',reserved:false},
   remind_zumi:{label:'リマインド済み',short:'リマインド',cls:'bd-sora',phase:'pre',reserved:false},
   kotowari:{label:'今回はお断り',short:'お断り',cls:'bd-sumire',phase:'pre',reserved:false},
+  other_stage:{label:'他の回予約済み',short:'他の回',cls:'bd-teal',phase:'both',reserved:false},
   yoyaku_zumi:{label:'予約済み',short:'予約',cls:'bd-midori',phase:'pre',reserved:true},
   zenjitsu_zumi:{label:'前日案内済み',short:'前日案内',cls:'bd-midori',phase:'pre',reserved:true},
   cancel:{label:'キャンセル',short:'キャンセル',cls:'bd-red',phase:'both',reserved:false},
   orei_mae:{label:'お礼の挨拶前',short:'お礼前',cls:'bd-kincha',phase:'post',reserved:true},
   orei_zumi:{label:'お礼送信済み',short:'お礼済',cls:'bd-midori',phase:'post',reserved:true}
 };
+/* 同一公演のすべての回で連動するステータス（お客さま単位の状態） */
+const SHOW_SYNC=['annai_mae','annai_zumi','remind_zumi','kotowari','cancel'];
+/* 回ごとに独立して持つステータス（その回に実際に来るかどうか） */
+const STAGE_ONLY=['yoyaku_zumi','zenjitsu_zumi','orei_mae','orei_zumi'];
 const PRE_KEYS=['annai_mae','annai_zumi','remind_zumi','kotowari','yoyaku_zumi','zenjitsu_zumi','cancel'];
 const POST_KEYS=['orei_mae','orei_zumi','cancel'];
 /* 行に直接並べるチップの並び（本番前／本番後） */
@@ -452,6 +461,7 @@ const SWIPE_RULES={
   annai_zumi:{right:'yoyaku_zumi',left:'kotowari'},
   remind_zumi:{right:'yoyaku_zumi',left:'kotowari'},
   kotowari:{right:'yoyaku_zumi',left:'__exclude'},
+  other_stage:{right:'yoyaku_zumi'},
   yoyaku_zumi:{right:'zenjitsu_zumi',left:'cancel'},
   zenjitsu_zumi:{left:'cancel'},
   cancel:{right:'yoyaku_zumi'},
@@ -904,33 +914,35 @@ function renderRoll(s){
           </div>
         </div>`;
       }
-      const curSt=r?r.status:'annai_mae';
+      const curSt=effectiveStatus(p.id,s.id,curStage);
       const stDef=ST[curSt];
       const resvId=r?r.id:'';
       const excChip=`<button class="exc" onclick="toggleExcludeInline('${p.id}','${s.id}')">📵 対象外</button>`;
       const chips=showChips?`<div class="st-chips">${chipKeys(past,curSt).map(k=>
-          `<button class="${k===curSt?'on '+ST[k].cls:''}" onclick="setStatusInline('${p.id}','${s.id}','${curStage}','${resvId}','${k}')">${k===curSt?'✓':''}${ST[k].short}</button>`
+          `<button class="${k===curSt?'on '+ST[k].cls:''}" ${k==='other_stage'?'disabled style="opacity:.85"':`onclick="setStatusInline('${p.id}','${s.id}','${curStage}','${resvId}','${k}')"`}>${k===curSt?'✓':''}${ST[k].short}</button>`
         ).join('')}${excChip}</div>`:'';
       const tail=showChips
         ? `<button class="more" onclick="openStatusPicker('${p.id}','${s.id}','${curStage}','${resvId}')" aria-label="詳しい設定">⋯</button>`
         : `<button class="roll-badge ${stDef.cls}" onclick="openStatusPicker('${p.id}','${s.id}','${curStage}','${resvId}')">${stDef.label}</button>`;
       if(!r){
-        return `<div class="roll-row" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="" data-status="annai_mae">
+        return `<div class="roll-row ${curSt==='other_stage'?'other':''}" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="" data-status="${curSt}">
           <div class="rl-top">
             <button class="check" onclick="quickAdd('${p.id}','${s.id}','${curStage}')" aria-label="予約を入れる">＋</button>
-            <button class="nm" onclick="quickAdd('${p.id}','${s.id}','${curStage}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}</button>
+            <button class="nm" onclick="quickAdd('${p.id}','${s.id}','${curStage}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}${curSt==='other_stage'?'<small>この公演の他の回に予約あり</small>':''}</button>
             ${tail}
           </div>${chips}
         </div>`;
       }
-      const sub=[r.seat?esc(r.seat):'',r.paid?'入金済み':''].filter(Boolean).join('・');
+      const sub=curSt==='other_stage'?'この公演の他の回に予約あり'
+        :[r.seat?esc(r.seat):'',r.paid?'入金済み':''].filter(Boolean).join('・');
       const cntBadge=isReserved(r)?`<button class="cnt" onclick="openResvEdit('${r.id}')" aria-label="枚数を変更"><b>${r.count}</b>枚</button>`:'';
       const rowCls=[
         isReserved(r)?'in':'',
-        ['annai_zumi','remind_zumi'].includes(r.status)?'sent':'',
-        ['cancel','kotowari'].includes(r.status)?'cn':''
+        curSt==='other_stage'?'other':'',
+        ['annai_zumi','remind_zumi'].includes(curSt)?'sent':'',
+        ['cancel','kotowari'].includes(curSt)?'cn':''
       ].filter(Boolean).join(' ');
-      return `<div class="roll-row ${rowCls}" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="${r.id}" data-status="${r.status}">
+      return `<div class="roll-row ${rowCls}" data-person="${p.id}" data-show="${s.id}" data-stage="${curStage}" data-resv="${r.id}" data-status="${curSt}">
         <div class="rl-top">
           <button class="check" onclick="checkTap('${r.id}')" aria-label="予約の切り替え">${isReserved(r)?'✓':'＋'}</button>
           <button class="nm" onclick="openResvEdit('${r.id}')">${p.group&&GRP[p.group]?GRP[p.group].icon+" ":""}${esc(p.name)}${p.kana?`<small>${esc(p.kana)}</small>`:''}${sub?`<small>${sub}</small>`:''}</button>
@@ -940,7 +952,7 @@ function renderRoll(s){
       </div>`;
     }).join('')}
     <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="openPersonForm()">👤 新しいお客さまを登録</button>
-    <p class="note">○をタップ＝予約1枚をワンタッチ登録。<b>お名前の右の枚数</b>をタップすると枚数や座席を変更できます。お名前の下のステータスは<b>タップするだけでその場で切り替わります</b>（使わなくてもOK。上の「🏷 ステータス」で非表示にもできます）。<b>⋯</b>から本番前・本番後のすべてのステータスと対象外設定へ。行の<b>左右スワイプ</b>でも、いまのステータスに応じて次の段階に進めます（例：案内済み→右で予約済み、左で今回はお断り）。</p>`;
+    <p class="note">○をタップ＝予約1枚をワンタッチ登録。<b>お名前の右の枚数</b>をタップすると枚数や座席を変更できます。お名前の下のステータスは<b>タップするだけでその場で切り替わります</b>（使わなくてもOK。上の「🏷 ステータス」で非表示にもできます）。<b>⋯</b>から本番前・本番後のすべてのステータスと対象外設定へ。行の<b>左右スワイプ</b>でも、いまのステータスに応じて次の段階に進めます（例：案内済み→右で予約済み、左で今回はお断り）。<br>案内前・案内済み・リマインド・お断り・キャンセルは<b>同じ公演の全ての回に反映</b>されます。どこかの回で予約が入ると、他の回は自動で<b>「他の回予約済み」</b>になります（枚数は0）。その回にも来られる場合は「予約」をタップすれば両方に予約が入ります。</p>`;
 }
 function openStageForm(showId,stageId){
   const s=DB.shows.find(x=>x.id===showId);
@@ -1137,37 +1149,70 @@ function openStatusPicker(personId,showId,stageId,resvId){
   const s=DB.shows.find(x=>x.id===showId);
   const stg=s.stages.find(x=>x.id===stageId);
   const r=resvId?DB.resv.find(x=>x.id===resvId):null;
-  const curSt=r?r.status:'annai_mae';
+  const curSt=effectiveStatus(personId,showId,stageId);
   const p=DB.people.find(x=>x.id===personId);
   const past=isPast(stg);
+  const otherIds=reservedStagesOf(personId,showId,stageId);
+  const otherNames=otherIds.map(id=>stageName((s.stages||[]).find(x=>x.id===id)||{})).filter(Boolean).join('、');
   const mkBtns=keys=>keys.map(k=>`<button class="${curSt===k?'on':''}" onclick="setStatus('${personId}','${showId}','${stageId}','${resvId||''}','${k}')">${ST[k].label}</button>`).join('');
   openModal(`
     <h3>${esc(p.name)} さんのステータス</h3>
     <p class="sub">${esc(s.name)}・${esc(stageName(stg))}</p>
+    ${otherNames?`<p class="note" style="margin:8px 0 0"><b>この公演の「${esc(otherNames)}」に予約が入っています。</b>この回にも来られる場合は「予約済み」を選ぶと、両方の回に予約が入ります。</p>`:''}
     <div class="st-phase">☀️ 本番前${past?'':'（いまはこちら）'}</div>
     <div class="st-grid">${mkBtns(PRE_KEYS)}</div>
     <div class="st-phase">🌙 本番後${past?'（いまはこちら）':''}</div>
     <div class="st-grid">${mkBtns(POST_KEYS.filter(k=>k!=='cancel'))}</div>
-    <p class="note">「案内前〜リマインド済み」は予約枚数に数えません。「予約済み」以降が集計対象になります。</p>
+    <p class="note">「案内前〜リマインド済み」は予約枚数に数えません。「予約済み」以降が集計対象になります。<br>案内前・案内済み・リマインド済み・お断り・キャンセルは、<b>同じ公演のすべての回に反映されます</b>（お客さまごとの状態のため）。予約済み・前日案内済み・お礼は回ごとに管理します。</p>
     <button class="btn btn-ghost" style="width:100%;margin-top:10px" onclick="closeModal();excludeFromShow('${personId}','${showId}')">📵 この公演では対象外にする（他の公演には案内できます）</button>
   `);
 }
 /* ステータス更新の本体。変更が起きたらtrueを返す */
+/* この公演の「他の回」に予約が入っているか（入っていればその回のステージIDを返す） */
+function reservedStagesOf(personId,showId,exceptStageId){
+  return DB.resv.filter(x=>
+    x.personId===personId && x.showId===showId &&
+    x.stageId!==exceptStageId && ST[x.status] && ST[x.status].reserved
+  ).map(x=>x.stageId);
+}
+/* 画面に表示する実際のステータスを求める。
+   この回が予約でなく、他の回に予約があれば「他の回予約済み」として見せる */
+function effectiveStatus(personId,showId,stageId){
+  const r=DB.resv.find(x=>x.personId===personId&&x.stageId===stageId);
+  if(r&&ST[r.status]&&ST[r.status].reserved)return r.status;
+  if(reservedStagesOf(personId,showId,stageId).length)return 'other_stage';
+  return r?r.status:'annai_mae';
+}
 function applyStatus(personId,showId,stageId,resvId,status){
-  let r=resvId?DB.resv.find(x=>x.id===resvId):null;
-  if(!r)r=DB.resv.find(x=>x.personId===personId&&x.stageId===stageId)||null;
-  if(!r){
-    if(status==='annai_mae')return false;
-    r={id:uid(),showId,stageId,personId,count:1,status,paid:false,note:'',seat:''};
-    DB.resv.push(r);
-  }else if(status==='annai_mae'&&r.count<=1&&!r.paid&&!r.note){
-    /* 案内前に戻す=レコード削除でスッキリ */
-    DB.resv=DB.resv.filter(x=>x.id!==r.id);
-  }else{
-    if(r.status===status)return false;
-    r.status=status;
+  /* 「他の回予約済み」は自動で決まる表示なので、直接は設定しない */
+  if(status==='other_stage')return false;
+  let changed=false;
+  /* 公演全体で連動するステータスは、同じ公演の全ての回にそろえる。
+     ただし予約が入っている回は壊さない（振替のときに予約が消えないように） */
+  const targetStages=SHOW_SYNC.includes(status)
+    ? ((DB.shows.find(x=>x.id===showId)||{}).stages||[]).map(x=>x.id)
+    : [stageId];
+  for(const sid of targetStages){
+    const isSelf=sid===stageId;
+    let r=(isSelf&&resvId?DB.resv.find(x=>x.id===resvId):null)
+        ||DB.resv.find(x=>x.personId===personId&&x.stageId===sid)||null;
+    /* 自分以外の回で、すでに予約が入っているものには触れない */
+    if(!isSelf&&r&&ST[r.status]&&ST[r.status].reserved)continue;
+    if(!r){
+      if(status==='annai_mae')continue;
+      DB.resv.push({id:uid(),showId,stageId:sid,personId,count:1,status,paid:false,note:'',seat:''});
+      changed=true;
+    }else if(status==='annai_mae'&&r.count<=1&&!r.paid&&!r.note){
+      /* 案内前に戻す=レコード削除でスッキリ */
+      DB.resv=DB.resv.filter(x=>x.id!==r.id);
+      changed=true;
+    }else if(r.status!==status){
+      r.status=status;
+      changed=true;
+    }
   }
-  saveData();return true;
+  if(changed)saveData();
+  return changed;
 }
 function setStatus(personId,showId,stageId,resvId,status){
   const changed=applyStatus(personId,showId,stageId,resvId,status);
